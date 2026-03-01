@@ -1275,13 +1275,20 @@ async function toggleReaction(newsId, key) {
 }
 
 function toggleAdmin() {
-  if (isAdmin) { showAdminPanel(); }
-  else { document.getElementById('login-overlay').style.display = 'flex'; setTimeout(function(){ document.getElementById('login-input').focus(); }, 80); }
+  if (isAdmin) {
+    // If currently in admin panel, go back to reader; if in reader, go to admin panel
+    var adminVisible = document.getElementById('admin-panel').style.display !== 'none';
+    if (adminVisible) showReader();
+    else showAdminPanel();
+  } else {
+    document.getElementById('login-overlay').style.display = 'flex';
+    setTimeout(function(){ document.getElementById('login-input').focus(); }, 80);
+  }
 }
 function showReader() {
   document.getElementById('reader-view').style.display = 'flex';
   document.getElementById('admin-panel').style.display = 'none';
-  if (isAdmin) document.getElementById('admin-toggle-btn').textContent = 'Dashboard';
+  document.getElementById('admin-toggle-btn').textContent = isAdmin ? 'Dashboard' : 'Access';
 }
 function showAdminPanel() {
   document.getElementById('reader-view').style.display = 'none';
