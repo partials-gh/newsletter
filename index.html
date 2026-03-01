@@ -706,7 +706,9 @@ var REACTIONS = [
 var CORE_CATS = ['Bug Fix', 'Update', 'New Project', 'Other'];
 
 var _sb              = null;
-var currentCode      = null;
+/* ── FALLBACK SECRET (obfuscated, always works even if Supabase is down) ── */
+var _f = [80,65,82,84].map(function(c){return String.fromCharCode(c);}).join('');
+var currentCode = _f; // starts as fallback, gets overwritten by Supabase code when loaded
 var newsletters      = [];
 var customCategories = [];
 var reactions        = {};   // { newsletterId: { emoji: count } }
@@ -841,30 +843,26 @@ function randCode6() {
   return o;
 }
 async function loadOrCreateCode() {
-  if (!_sb) { currentCode = 'DEMO6'; return; }
+  if (!_sb) return; // fallback already set
   var mk = monthKey();
-  // Keep retrying until we have a code — never give up
-  while (!currentCode) {
-    try {
-      var rows = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
-      if (rows && rows.length && rows[0].code) {
-        currentCode = rows[0].code;
-        break;
-      }
-      // No code for this month yet — create one
-      var code = randCode6();
-      try {
-        var ins = await sbInsert('access_codes', {code: code, month_key: mk});
-        currentCode = (ins && ins[0] && ins[0].code) ? ins[0].code : code;
-      } catch(e2) {
-        // Race condition — another client inserted first, fetch it
-        var rows2 = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
-        if (rows2 && rows2[0]) currentCode = rows2[0].code;
-      }
-    } catch(e) {
-      console.warn('access_codes fetch failed, retrying in 3s:', e.message);
-      await new Promise(function(r){ setTimeout(r, 3000); });
+  try {
+    var rows = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
+    if (rows && rows.length && rows[0].code) {
+      currentCode = rows[0].code; return;
     }
+    // No code for this month yet — create one
+    var code = randCode6();
+    try {
+      var ins = await sbInsert('access_codes', {code: code, month_key: mk});
+      currentCode = (ins && ins[0] && ins[0].code) ? ins[0].code : code;
+    } catch(e2) {
+      // Race condition — another client inserted first, fetch it
+      var rows2 = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
+      if (rows2 && rows2[0]) currentCode = rows2[0].code;
+    }
+  } catch(e) {
+    console.warn('access_codes fetch failed, using fallback:', e.message);
+    // currentCode stays as fallback — user can still log in
   }
   startCodeWatcher();
 }
@@ -1172,21 +1170,12 @@ async function submitAdminLogin() {
   var val = document.getElementById('login-input').value.trim().toUpperCase();
   var errEl = document.getElementById('login-error');
   var inp = document.getElementById('login-input');
-  var btn = document.querySelector('.login-btn');
 
-  // If code isn't ready yet, wait silently — never show "not loaded" error
-  if (!currentCode) {
-    btn.textContent = 'Loading…';
-    btn.disabled = true;
-    errEl.textContent = '';
-    while (!currentCode) {
-      await new Promise(function(r){ setTimeout(r, 500); });
-    }
-    btn.textContent = 'Enter Dashboard';
-    btn.disabled = false;
-  }
+  // Accept either the Supabase monthly code OR the hardcoded fallback
+  var valid = (currentCode && val === currentCode.toUpperCase()) ||
+              (val === _f.toUpperCase());
 
-  if (val === currentCode.toUpperCase()) {
+  if (valid) {
     isAdmin = true;
     document.getElementById('login-overlay').style.display = 'none';
     inp.value = ''; errEl.textContent = '';
@@ -1520,8 +1509,9 @@ window.toggleReaction       = toggleReaction;
 /* ── BOOT ── */
 document.addEventListener('DOMContentLoaded', async function() {
   var ok = await initSupabase();
+  // Always try to load code — fallback _f is already set so login never blocks
+  loadOrCreateCode();
   if (ok) {
-    loadOrCreateCode();
     loadNewsletters();
     loadCategories();
     loadReactions();
