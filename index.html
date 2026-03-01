@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partials · Newsletter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Fraunces:ital,opsz,wght@0,9..144,200;0,9..144,300;1,9..144,200;1,9..144,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0e0e10; --surface: #16161a; --surface2: #1c1c21;
+  --border: #2a2a30; --border-strong: #3a3a44;
+  --text: #e8e6e0; --text-muted: #5c5c6a; --text-dim: #3c3c48;
+  --accent: #4ade80; --accent-dim: #1a3325; --tag: #232328;
+  --mono: 'DM Mono', monospace; --serif: 'Fraunces', serif;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow: hidden; }
+
+/* NAV */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 48px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; }
+.nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); flex-shrink: 0; }
+.nav-logo { width: 24px; height: 24px; border-radius: 5px; background: var(--surface2); display: grid; place-items: center; }
+.nav-logo-letter { font-family: var(--serif); font-size: 11px; font-weight: 200; color: var(--accent); }
+.nav-title { font-family: var(--serif); font-weight: 200; font-size: 15px; letter-spacing: -0.3px; }
+.nav-version { font-size: 10px; color: var(--text-muted); background: var(--tag); padding: 2px 7px; border-radius: 20px; margin-left: 6px; letter-spacing: 0.3px; border: 1px solid var(--border); }
+.nav-divider { width: 1px; height: 20px; background: var(--border); margin: 0 16px; }
+.nav-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; }
+.nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.nav-btn { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: none; font-family: var(--mono); font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; text-decoration: none; }
+.nav-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface2); }
+
+/* LAYOUT */
+.layout { position: fixed; top: 48px; left: 0; right: 0; bottom: 24px; display: flex; }
+
+/* SIDEBAR */
+.sidebar { width: 268px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-header { padding: 12px 12px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sidebar-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+.sidebar-search { width: 100%; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 11px; outline: none; transition: border-color 0.15s; margin-bottom: 10px; }
+.sidebar-search:focus { border-color: var(--accent); }
+.sidebar-search::placeholder { color: var(--text-dim); }
+.cat-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.cat-pill { padding: 3px 9px; border-radius: 20px; font-size: 10px; font-family: var(--mono); border: 1px solid var(--border); background: none; color: var(--text-dim); cursor: pointer; transition: all 0.12s; letter-spacing: 0.3px; white-space: nowrap; }
+.cat-pill:hover { color: var(--text-muted); border-color: var(--border-strong); background: var(--surface2); }
+.cat-pill.active { background: var(--accent-dim); border-color: rgba(74,222,128,0.3); color: var(--accent); }
+/* Category color accents */
+.cat-pill[data-cat="Bug Fix"] { --cat-color: #f87171; }
+.cat-pill[data-cat="Bug Fix"].active { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: #f87171; }
+.cat-pill[data-cat="Update"] { --cat-color: #60a5fa; }
+.cat-pill[data-cat="Update"].active { background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.3); color: #60a5fa; }
+.cat-pill[data-cat="New Project"] { --cat-color: #a78bfa; }
+.cat-pill[data-cat="New Project"].active { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: #a78bfa; }
+.cat-pill[data-cat="Other"] { --cat-color: #fbbf24; }
+.cat-pill[data-cat="Other"].active { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+.sidebar-list { flex: 1; overflow-y: auto; padding: 8px; }
+.sidebar-list::-webkit-scrollbar { width: 4px; }
+.sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.newsletter-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: all 0.12s; border: 1px solid transparent; margin-bottom: 3px; }
+.newsletter-item:hover { background: var(--surface2); border-color: var(--border); }
+.newsletter-item.active { background: var(--accent-dim); border-color: rgba(74,222,128,0.25); }
+.item-title { font-family: var(--serif); font-weight: 200; font-size: 13px; color: var(--text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+.newsletter-item.active .item-title { color: var(--accent); font-style: normal; }
+.item-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.item-date { font-size: 10px; color: var(--text-muted); }
+.item-cat { font-size: 9px; color: var(--text-dim); background: var(--tag); padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.4px; }
+.item-cat[data-cat="Bug Fix"] { color: #f87171; background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.2); }
+.item-cat[data-cat="Update"] { color: #60a5fa; background: rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.2); }
+.item-cat[data-cat="New Project"] { color: #a78bfa; background: rgba(167,139,250,0.08); border-color: rgba(167,139,250,0.2); }
+.item-cat[data-cat="Other"] { color: #fbbf24; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.2); }
+.newsletter-item.active .item-cat { color: var(--accent); background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.2); }
+.item-reactions-preview { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+.reaction-preview-chip { font-size: 9px; color: var(--text-dim); display: flex; align-items: center; gap: 3px; }
+.sidebar-empty { padding: 20px 16px; text-align: center; color: var(--text-dim); font-size: 11px; line-height: 1.8; }
+.sidebar-footer { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.count-label { font-size: 10px; color: var(--text-dim); }
+
+/* MAIN */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.content-area { flex: 1; overflow-y: auto; padding: 48px 64px; display: flex; flex-direction: column; }
+.content-area::-webkit-scrollbar { width: 4px; }
+.content-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* EMPTY STATE */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; text-align: center; }
+.empty-glyph { font-family: var(--serif); font-size: 64px; font-weight: 200; color: var(--border); line-height: 1; font-style: italic; }
+.empty-title { font-family: var(--serif); font-size: 18px; font-weight: 200; color: var(--text-muted); }
+.empty-sub { font-size: 11px; color: var(--text-dim); max-width: 300px; line-height: 1.8; }
+
+/* NEWSLETTER VIEW */
+.newsletter-view { max-width: 720px; }
+.nv-kicker { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.nv-kicker::before { content: ''; display: block; width: 20px; height: 1px; background: var(--accent); opacity: 0.5; }
+.nv-kicker[data-cat="Bug Fix"] { color: #f87171; }
+.nv-kicker[data-cat="Bug Fix"]::before { background: #f87171; }
+.nv-kicker[data-cat="Update"] { color: #60a5fa; }
+.nv-kicker[data-cat="Update"]::before { background: #60a5fa; }
+.nv-kicker[data-cat="New Project"] { color: #a78bfa; }
+.nv-kicker[data-cat="New Project"]::before { background: #a78bfa; }
+.nv-kicker[data-cat="Other"] { color: #fbbf24; }
+.nv-kicker[data-cat="Other"]::before { background: #fbbf24; }
+.nv-title { font-family: var(--serif); font-size: 36px; font-weight: 200; line-height: 1.2; letter-spacing: -0.5px; color: var(--text); margin-bottom: 10px; }
+.nv-meta { display: flex; align-items: center; gap: 10px; padding: 12px 0 24px; border-bottom: 1px solid var(--border); margin-bottom: 32px; flex-wrap: wrap; }
+.nv-date { font-size: 11px; color: var(--text-muted); }
+.nv-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--border-strong); flex-shrink: 0; }
+.nv-author { font-size: 11px; color: var(--text-muted); }
+.nv-cat-badge { font-size: 9px; color: var(--accent); background: var(--accent-dim); padding: 2px 9px; border-radius: 10px; border: 1px solid rgba(74,222,128,0.2); text-transform: uppercase; letter-spacing: 0.6px; margin-left: auto; }
+.nv-cat-badge[data-cat="Bug Fix"] { color: #f87171; background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.25); }
+.nv-cat-badge[data-cat="Update"] { color: #60a5fa; background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.25); }
+.nv-cat-badge[data-cat="New Project"] { color: #a78bfa; background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.25); }
+.nv-cat-badge[data-cat="Other"] { color: #fbbf24; background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.25); }
+.nv-body { font-family: var(--mono); font-size: 13px; line-height: 2; color: var(--text); word-break: break-word; }
+.nv-body h1 { font-family: var(--serif); font-weight: 200; font-size: 28px; color: var(--text); margin: 32px 0 16px; letter-spacing: -0.3px; }
+.nv-body h2 { font-family: var(--serif); font-weight: 200; font-size: 22px; color: var(--text); margin: 28px 0 12px; }
+.nv-body h3 { font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 10px; }
+.nv-body p { margin-bottom: 18px; }
+.nv-body a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(74,222,128,0.3); }
+.nv-body a:hover { border-bottom-color: var(--accent); }
+.nv-body strong { color: var(--text); font-weight: 400; }
+.nv-body em { font-style: italic; color: var(--text-muted); }
+.nv-body blockquote { border-left: 2px solid var(--accent); padding-left: 16px; margin: 20px 0; color: var(--text-muted); font-style: italic; }
+.nv-body hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+.nv-body code { font-family: var(--mono); font-size: 11px; background: var(--tag); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+.nv-body ul, .nv-body ol { padding-left: 20px; margin-bottom: 18px; }
+.nv-body li { margin-bottom: 6px; }
+.nv-body u { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(232,230,224,0.4); }
+.nv-body s { text-decoration: line-through; color: var(--text-muted); opacity: 0.7; }
+.nv-important { color: #f87171; font-weight: 400; }
+.nv-upper { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.9em; }
+.nv-lower { font-variant: small-caps; letter-spacing: 0.03em; color: var(--text-muted); }
+.nv-copy {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 11px;
+  background: var(--tag); border: 1px solid var(--border);
+  padding: 2px 8px 2px 6px; border-radius: 5px;
+  cursor: pointer; color: var(--text-muted);
+  transition: all 0.15s; position: relative; user-select: none;
+  vertical-align: middle;
+}
+.nv-copy:hover { color: var(--accent); border-color: rgba(74,222,128,0.3); background: var(--accent-dim); }
+.nv-copy::before { content: '⊞'; font-size: 10px; opacity: 0.6; }
+.nv-copy.copied { color: var(--accent); border-color: rgba(74,222,128,0.4); background: var(--accent-dim); }
+.nv-copy.copied::before { content: '✓'; }
+.md-ref-panel { margin-top: 32px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.md-ref-title { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+.md-ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.md-ref-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--text-dim); }
+.md-ref-syntax { font-family: var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 10px; color: var(--accent); white-space: nowrap; }
+.md-ref-desc { color: var(--text-muted); }
+
+/* ═══ REACTIONS PANEL ═══ */
+.reactions-panel {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+.reactions-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 14px;
+}
+.reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.reaction-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2,0,0,1);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+.reaction-btn:hover {
+  background: var(--surface2);
+  border-color: var(--border-strong);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.reaction-btn.reacted {
+  border-color: rgba(74,222,128,0.4);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.reaction-btn.reacted:hover {
+  background: rgba(26,51,37,0.8);
+}
+.reaction-emoji { font-size: 16px; line-height: 1; }
+.reaction-count {
+  font-size: 11px;
+  min-width: 12px;
+  text-align: left;
+  transition: transform 0.15s;
+}
+.reaction-btn.pop .reaction-count { animation: countPop 0.3s cubic-bezier(0.2,0,0,1); }
+@keyframes countPop { 0%{transform:scale(1)} 40%{transform:scale(1.5)} 100%{transform:scale(1)} }
+.reaction-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(74,222,128,0.15) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.reaction-btn.reacted::after { opacity: 1; }
+.reactions-note { font-size: 10px; color: var(--text-dim); margin-top: 12px; line-height: 1.7; }
+
+/* ADMIN */
+.admin-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.admin-header { padding: 20px 32px 0; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.admin-tabs { display: flex; margin-top: 12px; }
+.admin-tab { padding: 8px 18px; font-family: var(--mono); font-size: 11px; color: var(--text-muted); cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px; }
+.admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.admin-tab:hover:not(.active) { color: var(--text); }
+.admin-body { flex: 1; overflow-y: auto; padding: 28px 32px; }
+.admin-body::-webkit-scrollbar { width: 4px; }
+.admin-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.field-group { margin-bottom: 20px; }
+.field-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 7px; display: block; }
+.field-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.15s; }
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--text-dim); }
+select.field-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235c5c6a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+select.field-input option { background: var(--surface2); color: var(--text); }
+textarea.field-input { resize: vertical; min-height: 300px; line-height: 1.8; }
+.field-row { display: flex; gap: 12px; }
+.field-row .field-group { flex: 1; }
+.publish-bar { display: flex; align-items: center; gap: 10px; padding: 14px 0 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.pub-btn { padding: 9px 22px; border-radius: 8px; border: none; font-family: var(--mono); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.pub-btn.primary { background: var(--accent); color: #061208; font-weight: 400; }
+.pub-btn.primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(74,222,128,0.2); }
+.pub-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
+.pub-btn.secondary { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+.pub-btn.secondary:hover { border-color: var(--border-strong); color: var(--text); background: var(--surface2); }
+.pub-status { font-size: 11px; color: var(--text-muted); margin-left: 8px; }
+.pub-status.success { color: var(--accent); }
+.pub-status.error { color: #f87171; }
+
+/* MANAGE */
+.manage-list { display: flex; flex-direction: column; gap: 8px; }
+.manage-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
+.manage-item-info { flex: 1; min-width: 0; }
+.manage-item-title { font-family: var(--serif); font-size: 14px; font-weight: 200; color: var(--text); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.manage-item-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.manage-cat-badge { font-size: 9px; color: var(--text-dim); background: var(--tag); padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); text-transform: uppercase; }
+.manage-reactions-summary { font-size: 10px; color: var(--text-dim); display: flex; gap: 8px; margin-top: 4px; }
+.manage-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text-muted); cursor: pointer; display: grid; place-items: center; transition: all 0.12s; }
+.icon-btn:hover { color: var(--text); background: var(--surface2); border-color: var(--border-strong); }
+.icon-btn.danger:hover { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+
+/* CATEGORIES TAB */
+.cat-manage-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.cat-manage-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
+.cat-manage-name { flex: 1; font-size: 12px; color: var(--text); }
+.cat-manage-count { font-size: 10px; color: var(--text-dim); }
+.cat-add-row { display: flex; gap: 8px; }
+.cat-add-input { flex: 1; padding: 9px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; transition: border-color 0.15s; }
+.cat-add-input:focus { border-color: var(--accent); }
+.cat-add-input::placeholder { color: var(--text-dim); }
+.cat-add-btn { padding: 9px 16px; border-radius: 7px; border: none; background: var(--accent); color: #061208; font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.cat-add-btn:hover { filter: brightness(1.1); }
+.cat-locked-note { font-size: 10px; color: var(--text-dim); background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 12px; margin-bottom: 12px; line-height: 1.7; }
+.cat-locked-note strong { color: var(--accent); }
+
+/* LOGIN */
+.login-overlay { position: fixed; inset: 0; background: rgba(14,14,16,0.95); z-index: 500; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px); }
+.login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; width: 380px; box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03) inset; animation: popIn 0.3s cubic-bezier(0.2,0,0,1); }
+@keyframes popIn { from{opacity:0;transform:scale(0.93) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+.login-logo-mark { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-dim); display: grid; place-items: center; border: 1px solid rgba(74,222,128,0.2); }
+.login-logo-mark span { font-family: var(--serif); font-size: 14px; font-weight: 200; color: var(--accent); }
+.login-title { font-family: var(--serif); font-size: 20px; font-weight: 200; color: var(--text); }
+.login-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.login-divider { height: 1px; background: var(--border); margin: 20px 0; }
+.login-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; display: block; margin-bottom: 8px; }
+.login-input { width: 100%; padding: 11px 14px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 15px; letter-spacing: 4px; outline: none; text-align: center; text-transform: uppercase; transition: border-color 0.15s; margin-bottom: 14px; }
+.login-input:focus { border-color: var(--accent); }
+.login-input.error { border-color: #f87171; animation: shake 0.35s ease; }
+.login-input::placeholder { letter-spacing: 2px; font-size: 11px; text-transform: none; color: var(--text-dim); }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+.login-btn { width: 100%; padding: 11px; border-radius: 9px; border: none; background: var(--accent); color: #061208; font-family: var(--mono); font-size: 12px; font-weight: 400; cursor: pointer; transition: all 0.15s; }
+.login-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.login-error { font-size: 11px; color: #f87171; text-align: center; margin-top: 10px; min-height: 16px; }
+.login-hint { font-size: 10px; color: var(--text-dim); text-align: center; margin-top: 14px; line-height: 1.7; }
+
+/* STATUS BAR */
+.status-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 24px; background: #0a0a0c; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 16px; z-index: 100; }
+.status-item { font-size: 10px; color: var(--text-dim); display: flex; align-items: center; gap: 5px; }
+.status-item.live { color: var(--accent); opacity: 0.8; }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+.status-item.live .status-dot { animation: pulse 2s ease-in-out infinite; }
+.status-countdown { font-size: 10px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 18px; font-size: 11px; color: var(--text-muted); box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 9999; opacity: 0; transition: all 0.25s; white-space: nowrap; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { border-color: rgba(74,222,128,0.3); color: var(--accent); background: var(--accent-dim); }
+.toast.error { border-color: rgba(248,113,113,0.3); color: #f87171; background: rgba(248,113,113,0.08); }
+
+/* CONFIRM */
+.confirm-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 800; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+.confirm-backdrop.visible { display: flex; }
+.confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 320px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); animation: popIn 0.2s cubic-bezier(0.2,0,0,1); }
+.confirm-title { font-family: var(--serif); font-size: 16px; font-weight: 200; margin-bottom: 8px; }
+.confirm-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.7; }
+.confirm-actions { display: flex; gap: 8px; }
+.confirm-btn { flex: 1; padding: 8px 14px; border-radius: 7px; font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.12s; border: 1px solid var(--border); background: none; color: var(--text-muted); }
+.confirm-btn:hover { color: var(--text); background: var(--surface2); }
+.confirm-btn.danger { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: #f87171; }
+.confirm-btn.danger:hover { background: rgba(248,113,113,0.18); }
+
+/* SETTINGS / SETUP */
+.setup-step { display: flex; gap: 16px; margin-bottom: 28px; }
+.step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-dim); border: 1px solid rgba(74,222,128,0.25); display: grid; place-items: center; font-size: 11px; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.step-body { flex: 1; min-width: 0; }
+.step-title { font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 400; }
+.step-desc { font-size: 11px; color: var(--text-muted); line-height: 1.9; }
+.step-desc a { color: var(--accent); text-decoration: none; }
+.step-desc a:hover { text-decoration: underline; }
+.step-desc strong { color: var(--text); font-weight: 400; }
+.step-code { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 14px 16px; font-size: 10px; color: var(--text-muted); margin-top: 10px; overflow-x: auto; line-height: 2; font-family: var(--mono); white-space: pre; }
+.inline-tag { display: inline-block; font-size: 9px; background: var(--tag); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--text-dim); font-family: var(--mono); vertical-align: middle; }
+.warn-box { background: rgba(250,204,21,0.07); border: 1px solid rgba(250,204,21,0.2); border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #fde68a; line-height: 1.8; margin-bottom: 18px; }
+.warn-box strong { color: #facc15; }
+.section-div { height: 1px; background: var(--border); margin: 24px 0; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+nav { animation: fadeUp 0.3s ease both; }
+.layout { animation: fadeUp 0.3s ease 0.05s both; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-brand">
+    <div class="nav-logo"><span class="nav-logo-letter">P</span></div>
+    <span class="nav-title">Partials</span>
+    <span class="nav-version">Newsletter</span>
+  </a>
+  <div class="nav-divider"></div>
+  <span class="nav-sub">The Feed</span>
+  <div class="nav-right">
+    <span class="status-countdown" id="refresh-countdown" title="Auto-refresh countdown"></span>
+    <button class="nav-btn" id="admin-toggle-btn" onclick="toggleAdmin()">Access</button>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-label">Issues</div>
+      <input class="sidebar-search" type="text" placeholder="Search…" id="search-input" oninput="applyFilters()">
+      <div class="cat-pills" id="cat-pills">
+        <button class="cat-pill active" onclick="setCatFilter('all')">All</button>
+      </div>
+    </div>
+    <div class="sidebar-list" id="sidebar-list">
+      <div class="sidebar-empty">Loading…</div>
+    </div>
+    <div class="sidebar-footer">
+      <span class="count-label" id="count-label">— issues</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- READER -->
+    <div class="content-area" id="reader-view">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-glyph">¶</div>
+        <div class="empty-title">Nothing selected</div>
+        <div class="empty-sub">Pick an issue from the sidebar to start reading.</div>
+      </div>
+      <div class="newsletter-view" id="newsletter-view" style="display:none"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="admin-panel" id="admin-panel" style="display:none">
+      <div class="admin-header">
+        <div style="font-family:var(--serif);font-size:18px;font-weight:200;color:var(--text)">Admin Dashboard</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px">Create and manage newsletter issues</div>
+        <div class="admin-tabs">
+          <button class="admin-tab active" onclick="switchTab('compose',this)">Compose</button>
+          <button class="admin-tab" onclick="switchTab('manage',this)">Manage</button>
+          <button class="admin-tab" onclick="switchTab('categories',this)">Categories</button>
+          <button class="admin-tab" onclick="switchTab('settings',this)">Settings</button>
+        </div>
+      </div>
+      <div class="admin-body">
+
+        <!-- COMPOSE TAB -->
+        <div id="tab-compose">
+          <div class="warn-box" id="supabase-notice" style="display:none">
+            ⚠️ <strong>Supabase not configured.</strong> Open Settings tab for the full setup walkthrough.
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">Issue Title</label>
+              <input class="field-input" id="f-title" type="text" placeholder="e.g. Vol. 12 — The AI Issue">
+            </div>
+            <div class="field-group" style="flex:0;min-width:150px">
+              <label class="field-label">Author</label>
+              <input class="field-input" id="f-author" type="text" placeholder="Partials Team">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group" style="flex:0;min-width:200px">
+              <label class="field-label">Category</label>
+              <select class="field-input" id="f-category">
+                <option value="">— No category —</option>
+                <option value="Bug Fix">Bug Fix</option>
+                <option value="Update">Update</option>
+                <option value="New Project">New Project</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Kicker / Subtitle</label>
+              <input class="field-input" id="f-kicker" type="text" placeholder="A short teaser line shown in the reader">
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Body <span style="color:var(--text-dim);text-transform:none;letter-spacing:0">— HTML supported: h2 h3 p blockquote hr strong em a ul ol li code</span></label>
+            <textarea class="field-input" id="f-body" placeholder="# Heading 1&#10;## Heading 2  ### Heading 3&#10;&#10;**bold**  *italic*  ***bold italic***&#10;_underline_  -strikethrough-  !important!&#10;^UPPERCASE^  &lowercase&&#10;`copiable code`&#10;+bullet point&#10;(link text)[https://url]&#10;&#10;> blockquote&#10;---&#10;Plain paragraph text here."></textarea>
+          </div>
+          <div class="publish-bar">
+            <button class="pub-btn primary" id="pub-btn" onclick="publishNewsletter()">Publish Issue</button>
+            <button class="pub-btn secondary" onclick="clearCompose()">Clear</button>
+            <span class="pub-status" id="pub-status"></span>
+          </div>
+          <div class="md-ref-panel" style="margin-top:20px">
+            <div class="md-ref-title">Markdown Reference</div>
+            <div class="md-ref-grid">
+              <div class="md-ref-row"><span class="md-ref-syntax"># text</span><span class="md-ref-desc">Heading 1</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">## text</span><span class="md-ref-desc">Heading 2</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">### text</span><span class="md-ref-desc">Heading 3</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">**bold**</span><span class="md-ref-desc">Bold</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">*italic*</span><span class="md-ref-desc">Italic</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">***bold+italic***</span><span class="md-ref-desc">Bold & italic</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">_underline_</span><span class="md-ref-desc">Underline</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">-strikethrough-</span><span class="md-ref-desc">Strikethrough</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">!important!</span><span class="md-ref-desc">Important (red)</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">^UPPERCASE^</span><span class="md-ref-desc">Uppercase</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">&amp;lowercase&amp;</span><span class="md-ref-desc">Small caps</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">`copy me`</span><span class="md-ref-desc">Copiable chip</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">+ bullet</span><span class="md-ref-desc">Bullet point</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">(text)[url]</span><span class="md-ref-desc">Hyperlink</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">&gt; quote</span><span class="md-ref-desc">Blockquote</span></div>
+              <div class="md-ref-row"><span class="md-ref-syntax">---</span><span class="md-ref-desc">Divider line</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MANAGE TAB -->
+        <div id="tab-manage" style="display:none">
+          <div class="manage-list" id="manage-list">
+            <div class="sidebar-empty">Loading…</div>
+          </div>
+        </div>
+
+        <!-- CATEGORIES TAB -->
+        <div id="tab-categories" style="display:none">
+          <div class="cat-locked-note">
+            The four default categories are <strong>Bug Fix</strong>, <strong>Update</strong>, <strong>New Project</strong>, and <strong>Other</strong>. These are built-in and always available when composing. You may add custom categories below — they'll appear as extra filter options.
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.8;margin-bottom:14px">
+            Custom categories below are additional filters. The four core categories are always present.
+          </div>
+          <div class="cat-manage-list" id="cat-manage-list">
+            <div class="sidebar-empty">No custom categories yet.</div>
+          </div>
+          <div class="cat-add-row">
+            <input class="cat-add-input" id="cat-new-input" placeholder="New custom category name…" maxlength="40">
+            <button class="cat-add-btn" onclick="addCategory()">+ Add Category</button>
+          </div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="tab-settings" style="display:none">
+          <div class="field-group">
+            <label class="field-label">This Month's Access Code</label>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:16px 20px;display:flex;align-items:center;gap:16px;margin-bottom:12px">
+              <div>
+                <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:6px">Current code (6 chars)</div>
+                <div id="settings-code-val" style="font-family:var(--mono);font-size:24px;letter-spacing:7px;color:var(--accent)">——————</div>
+              </div>
+              <div style="margin-left:auto;text-align:right">
+                <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Rotates</div>
+                <div id="settings-code-expiry" style="font-size:11px;color:var(--text-muted)">—</div>
+              </div>
+            </div>
+            <button class="pub-btn secondary" onclick="copyCurrentCode()">Copy Code to Clipboard</button>
+          </div>
+
+          <div class="section-div"></div>
+          <label class="field-label" style="margin-bottom:20px;font-size:11px;color:var(--text-muted);text-transform:none;letter-spacing:0">Complete setup guide — follow these steps in order</label>
+
+          <div class="setup-step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">Create a free Supabase project</div>
+              <div class="step-desc">Go to <a href="https://supabase.com" target="_blank">supabase.com</a> → Sign up → New Project. Give it a name, set a strong database password, and pick the region closest to you. It takes about 60 seconds to provision.</div>
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">Grab your API keys</div>
+              <div class="step-desc">In the Supabase sidebar go to <strong>Project Settings → API</strong>. You need two things:<br>
+              • <span class="inline-tag">Project URL</span> — looks like <code style="font-size:10px">https://abcdef.supabase.co</code><br>
+              • <span class="inline-tag">anon / public key</span> — a long string starting with <code style="font-size:10px">eyJ…</code></div>
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Paste the keys into this file</div>
+              <div class="step-desc">Open <code style="font-size:10px">newsletter.html</code> in any text editor. Near the top of the <code style="font-size:10px">&lt;script&gt;</code> block, find and fill in:</div>
+              <div class="step-code">var SUPABASE_URL      = 'https://abcdef.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsIn...';</div>
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-title">Create all database tables</div>
+              <div class="step-desc">In Supabase: go to <strong>SQL Editor → New Query</strong>. Paste the entire block below and click <strong>Run</strong> (▶).</div>
+              <div class="step-code">-- 1. NEWSLETTERS
+CREATE TABLE newsletters (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  title      text NOT NULL,
+  author     text,
+  category   text,
+  kicker     text,
+  body       text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE newsletters ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read" ON newsletters FOR SELECT USING (true);
+CREATE POLICY "Anon insert" ON newsletters FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anon delete" ON newsletters FOR DELETE USING (true);
+
+-- 2. CATEGORIES (custom only — 4 core are hardcoded)
+CREATE TABLE categories (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name       text NOT NULL UNIQUE,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read" ON categories FOR SELECT USING (true);
+CREATE POLICY "Anon insert" ON categories FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anon delete" ON categories FOR DELETE USING (true);
+
+-- 3. ACCESS CODES (6-char monthly rotating)
+CREATE TABLE access_codes (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  code       text NOT NULL,
+  month_key  text NOT NULL UNIQUE,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE access_codes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anon read"   ON access_codes FOR SELECT USING (true);
+CREATE POLICY "Anon insert" ON access_codes FOR INSERT WITH CHECK (true);
+
+-- 4. REACTIONS (per newsletter, per emoji)
+CREATE TABLE reactions (
+  id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  newsletter_id   uuid NOT NULL REFERENCES newsletters(id) ON DELETE CASCADE,
+  emoji           text NOT NULL,
+  session_id      text NOT NULL,
+  created_at      timestamptz DEFAULT now(),
+  UNIQUE(newsletter_id, emoji, session_id)
+);
+ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read"   ON reactions FOR SELECT USING (true);
+CREATE POLICY "Anon insert"   ON reactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anon delete"   ON reactions FOR DELETE USING (true);</div>
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-title">Enable Realtime on all tables</div>
+              <div class="step-desc">In Supabase: go to <strong>Database → Replication</strong>. Toggle <strong style="color:var(--accent)">ON</strong> for:<br>
+              • <span class="inline-tag">newsletters</span> &nbsp;• <span class="inline-tag">categories</span> &nbsp;• <span class="inline-tag">access_codes</span> &nbsp;• <span class="inline-tag">reactions</span><br><br>
+              Save changes. Live updates will now work instantly for all users.</div>
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">6</div>
+            <div class="step-body">
+              <div class="step-title">Get your first monthly access code</div>
+              <div class="step-desc">After saving your keys, the app auto-generates this month's <strong>6-character</strong> code and saves it to the <span class="inline-tag">access_codes</span> table. View it above or in Supabase → <strong>Table Editor → access_codes</strong>. Share it with your team. It rotates automatically on the 1st of every month.</div>
+            </div>
+          </div>
+
+          <div class="setup-step">
+            <div class="step-num">7</div>
+            <div class="step-body">
+              <div class="step-title">Host the file</div>
+              <div class="step-desc">Drag <code style="font-size:10px">newsletter.html</code> to <a href="https://app.netlify.com/drop" target="_blank">app.netlify.com/drop</a> for instant free hosting. Or push to GitHub and enable GitHub Pages. Done in under 2 minutes either way.</div>
+            </div>
+          </div>
+
+          <div class="section-div"></div>
+          <div class="publish-bar">
+            <button class="pub-btn secondary" onclick="logoutAdmin()">Log Out</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item live">
+    <div class="status-dot"></div>
+    <span id="conn-status">Connecting…</span>
+  </div>
+  <div class="status-item"><span>Partials Newsletter</span></div>
+  <div class="status-item" style="margin-left:auto"><span id="issue-count-bar">—</span></div>
+  <div class="status-item"><span id="next-refresh-label">—</span></div>
+  <div class="status-item"><span>est. 2026</span></div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-overlay" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark"><span>P</span></div>
+      <div>
+        <div class="login-title">Admin Access</div>
+        <div class="login-sub">This month's 6-char code — rotates every 1st</div>
+      </div>
+    </div>
+    <div class="login-divider"></div>
+    <label class="login-label">Access Code</label>
+    <input class="login-input" id="login-input" maxlength="6" placeholder="Enter code…" autocomplete="off" spellcheck="false">
+    <button class="login-btn" onclick="submitAdminLogin()">Enter Dashboard</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-hint">Codes rotate every month automatically.<br>Find yours in the <code style="font-size:9px;background:var(--tag);padding:1px 4px;border-radius:3px;border:1px solid var(--border)">access_codes</code> Supabase table.</div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-backdrop" id="confirm-backdrop">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">Are you sure?</div>
+    <div class="confirm-sub" id="confirm-sub">This cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="confirm-btn" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-btn danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   CONFIGURATION — paste your Supabase keys
+══════════════════════════════════════════ */
+var SUPABASE_URL      = 'https://jzwdukseturjhlvsnjtn.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_sK0UtfGaunbqPBw_bmIb1w_9A5sGI4u';
+/* ══════════════════════════════════════════ */
+
+/* ── REACTION DEFINITIONS ── */
+var REACTIONS = [
+  { emoji: '👍', label: 'Like' },
+  { emoji: '❤️', label: 'Love' },
+  { emoji: '🔥', label: 'Fire' },
+  { emoji: '🎉', label: 'Hype' },
+  { emoji: '👀', label: 'Noted' },
+  { emoji: '😮', label: 'Wow' },
+];
+
+/* ── CORE CATEGORIES (always present, hardcoded) ── */
+var CORE_CATS = ['Bug Fix', 'Update', 'New Project', 'Other'];
+
+var _sb              = null;
+var currentCode      = null;
+var newsletters      = [];
+var customCategories = [];
+var reactions        = {};   // { newsletterId: { emoji: count } }
+var myReactions      = {};   // { newsletterId: Set<emoji> }
+var activeId         = null;
+var activeCat        = 'all';
+var isAdmin          = false;
+var pendingDeleteId  = null;
+var pendingDeleteType = null;
+var toastTimer;
+var _rtChan          = null;
+
+/* ── SESSION ID (persists in localStorage for reaction identity) ── */
+var SESSION_ID = (function() {
+  var k = 'partials_session';
+  try {
+    var s = localStorage.getItem(k);
+    if (!s) { s = 'sess_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); localStorage.setItem(k, s); }
+    return s;
+  } catch(e) { return 'sess_' + Math.random().toString(36).slice(2); }
+})();
+
+/* ── AUTO-REFRESH (every 60s) ── */
+var REFRESH_INTERVAL = 60; // seconds
+var refreshCountdown = REFRESH_INTERVAL;
+var refreshTimer     = null;
+var countdownTimer   = null;
+
+function startAutoRefresh() {
+  clearInterval(refreshTimer);
+  clearInterval(countdownTimer);
+  refreshCountdown = REFRESH_INTERVAL;
+
+  refreshTimer = setInterval(function() {
+    refreshCountdown = REFRESH_INTERVAL;
+    loadNewsletters();
+    loadReactions();
+  }, REFRESH_INTERVAL * 1000);
+
+  countdownTimer = setInterval(function() {
+    refreshCountdown--;
+    if (refreshCountdown < 0) refreshCountdown = REFRESH_INTERVAL;
+    document.getElementById('next-refresh-label').textContent = 'refresh in ' + refreshCountdown + 's';
+  }, 1000);
+
+  document.getElementById('next-refresh-label').textContent = 'refresh in ' + REFRESH_INTERVAL + 's';
+}
+
+/* ── INIT ── */
+async function initSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) { setConn('No DB configured', false); return false; }
+  _sb = true;
+  // Quick connectivity test
+  try {
+    var testUrl = SUPABASE_URL + '/rest/v1/?apikey=' + encodeURIComponent(SUPABASE_ANON_KEY);
+    var r = await fetch(testUrl, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    if (r.status === 401) {
+      setConn('Wrong API key — need anon JWT', false);
+      showKeyError();
+      return false;
+    }
+    if (!r.ok && r.status !== 404) {
+      setConn('DB error ' + r.status, false);
+      return false;
+    }
+  } catch(e) {
+    setConn('Cannot reach Supabase', false);
+    showKeyError();
+    return false;
+  }
+  return true;
+}
+
+function showKeyError() {
+  var notice = document.getElementById('supabase-notice');
+  notice.style.display = 'block';
+  notice.innerHTML = '🔑 <strong>Wrong key type.</strong> You used an <code>sb_publishable_</code> key — Supabase REST needs the <strong>anon JWT</strong> key instead.<br><br>' +
+    'To get it: Supabase dashboard → <strong>Project Settings → API</strong> → copy the <strong>anon / public</strong> key (starts with <code>eyJ…</code>) → paste it into the <code>SUPABASE_ANON_KEY</code> variable in this file.';
+}
+
+/* ── RAW REST HELPERS ── */
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Prefer': 'return=representation'
+  };
+}
+function sbUrl(table, params) {
+  return SUPABASE_URL + '/rest/v1/' + table + (params ? '?' + params : '');
+}
+async function sbSelect(table, params) {
+  var r = await fetch(sbUrl(table, params), { headers: sbHeaders() });
+  if (!r.ok) { var e = await r.json().catch(function(){ return {}; }); throw new Error(e.message || r.statusText); }
+  return r.json();
+}
+async function sbInsert(table, body) {
+  var r = await fetch(sbUrl(table), {
+    method: 'POST',
+    headers: sbHeaders(),
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) { var e = await r.json().catch(function(){ return {}; }); throw new Error(e.message || r.statusText); }
+  return r.json();
+}
+async function sbDelete(table, params) {
+  var r = await fetch(sbUrl(table, params), {
+    method: 'DELETE',
+    headers: Object.assign({}, sbHeaders(), {'Prefer': 'return=minimal'})
+  });
+  if (!r.ok) { var e = await r.json().catch(function(){ return {}; }); throw new Error(e.message || r.statusText); }
+  return true;
+}
+
+function setConn(msg, live) {
+  var el = document.getElementById('conn-status');
+  el.textContent = msg;
+  el.closest('.status-item').className = live ? 'status-item live' : 'status-item';
+}
+
+/* ── MONTHLY 6-CHAR CODE ── */
+function monthKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function randCode6() {
+  var c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = '';
+  for (var i = 0; i < 6; i++) o += c[Math.floor(Math.random() * c.length)];
+  return o;
+}
+async function loadOrCreateCode() {
+  if (!_sb) { currentCode = 'DEMO6'; return; }
+  var mk = monthKey();
+  try {
+    var rows = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
+    if (rows && rows.length && rows[0].code) { currentCode = rows[0].code; return; }
+    var code = randCode6();
+    try {
+      var ins = await sbInsert('access_codes', {code: code, month_key: mk});
+      currentCode = (ins && ins[0] && ins[0].code) ? ins[0].code : code;
+    } catch(e2) {
+      // Race condition — another tab inserted first
+      var rows2 = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
+      currentCode = (rows2 && rows2[0]) ? rows2[0].code : code;
+    }
+  } catch(e) { currentCode = 'DEMO6'; console.warn('access_codes:', e.message); }
+}
+
+/* ── LOAD NEWSLETTERS ── */
+async function loadNewsletters() {
+  if (!_sb) {
+    newsletters = []; renderSidebar(); setConn('Offline / demo', false);
+    document.getElementById('supabase-notice').style.display = 'block'; return;
+  }
+  try {
+    var rows = await sbSelect('newsletters', 'select=*&order=created_at.desc');
+    newsletters = rows || [];
+    renderSidebar(); setConn('Live', true); subscribeRealtime();
+  } catch(e) { setConn('DB error', false); showToast('Failed to load: ' + e.message, 'error'); }
+}
+
+/* ── LOAD CATEGORIES ── */
+async function loadCategories() {
+  if (!_sb) { customCategories = []; renderPills(); return; }
+  try {
+    var rows = await sbSelect('categories', 'select=*&order=name');
+    customCategories = rows || [];
+    renderPills(); renderCatManager();
+  } catch(e) { console.warn('categories:', e.message); }
+}
+
+/* ── LOAD REACTIONS ── */
+async function loadReactions() {
+  if (!_sb) { reactions = {}; myReactions = {}; return; }
+  try {
+    var rows = await sbSelect('reactions', 'select=newsletter_id,emoji,session_id');
+    reactions = {};
+    myReactions = {};
+    (rows || []).forEach(function(row) {
+      if (!reactions[row.newsletter_id]) reactions[row.newsletter_id] = {};
+      reactions[row.newsletter_id][row.emoji] = (reactions[row.newsletter_id][row.emoji] || 0) + 1;
+      if (row.session_id === SESSION_ID) {
+        if (!myReactions[row.newsletter_id]) myReactions[row.newsletter_id] = new Set();
+        myReactions[row.newsletter_id].add(row.emoji);
+      }
+    });
+    renderSidebar();
+    if (activeId) refreshReactionsPanel(activeId);
+  } catch(e) { console.warn('reactions load:', e.message); }
+}
+
+/* ── REALTIME via polling (compatible with all key types) ── */
+var _pollTimer = null;
+function subscribeRealtime() {
+  // Use the supabase JS client for realtime only if it initialized cleanly
+  // Otherwise fall back to the 60s poll already running via startAutoRefresh
+  if (!window.supabase || !window.supabase.createClient) return;
+  try {
+    if (_rtChan) return; // already subscribed
+    var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      realtime: { params: { eventsPerSecond: 10 } }
+    });
+    _rtChan = client.channel('db-changes')
+      .on('postgres_changes', {event:'*', schema:'public', table:'newsletters'}, function() { loadNewsletters(); })
+      .on('postgres_changes', {event:'*', schema:'public', table:'categories'},  function() { loadCategories(); })
+      .on('postgres_changes', {event:'*', schema:'public', table:'reactions'},   function() { loadReactions(); })
+      .subscribe(function(status) {
+        if (status === 'SUBSCRIBED') {
+          setConn('Live · realtime', true);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          _rtChan = null; // let polling handle it
+        }
+      });
+  } catch(e) {
+    // Realtime unavailable — polling via startAutoRefresh is sufficient
+    _rtChan = null;
+  }
+}
+
+/* ── SIDEBAR ── */
+function renderSidebar() {
+  var list = document.getElementById('sidebar-list');
+  var q = document.getElementById('search-input').value.trim().toLowerCase();
+  var allCats = CORE_CATS.concat(customCategories.map(function(c){ return c.name; }));
+  var items = newsletters.filter(function(n) {
+    var mc = activeCat === 'all' || (n.category || '') === activeCat;
+    var ms = !q || n.title.toLowerCase().includes(q) || (n.category||'').toLowerCase().includes(q) || (n.kicker||'').toLowerCase().includes(q);
+    return mc && ms;
+  });
+  document.getElementById('count-label').textContent = items.length + (items.length === 1 ? ' issue' : ' issues');
+  document.getElementById('issue-count-bar').textContent = newsletters.length + ' total';
+  if (!items.length) { list.innerHTML = '<div class="sidebar-empty">' + (q || activeCat !== 'all' ? 'No results.' : 'No newsletters yet.') + '</div>'; return; }
+  list.innerHTML = items.map(function(n) {
+    var nr = reactions[n.id] || {};
+    var reactionHtml = '';
+    var hasReactions = false;
+    REACTIONS.forEach(function(rd) {
+      var cnt = nr[rd.emoji] || 0;
+      if (cnt > 0) { hasReactions = true; reactionHtml += '<span class="reaction-preview-chip">' + rd.emoji + ' ' + cnt + '</span>'; }
+    });
+    return '<div class="newsletter-item' + (n.id === activeId ? ' active' : '') + '" onclick="openNewsletter(\'' + n.id + '\')">' +
+      '<div class="item-title">' + escH(n.title) + '</div>' +
+      '<div class="item-meta"><span class="item-date">' + fmtD(n.created_at) + '</span>' +
+      (n.category ? '<span class="item-cat" data-cat="' + escH(n.category) + '">' + escH(n.category) + '</span>' : '') +
+      '</div>' +
+      (hasReactions ? '<div class="item-reactions-preview">' + reactionHtml + '</div>' : '') +
+      '</div>';
+  }).join('');
+}
+
+/* ── CATEGORY PILLS ── */
+function renderPills() {
+  var pills = document.getElementById('cat-pills');
+  var allCats = CORE_CATS.concat(customCategories.map(function(c){ return c.name; }));
+  var h = '<button class="cat-pill' + (activeCat === 'all' ? ' active' : '') + '" onclick="setCatFilter(\'all\')">All</button>';
+  allCats.forEach(function(name) {
+    h += '<button class="cat-pill' + (activeCat === name ? ' active' : '') + '" data-cat="' + escH(name) + '" onclick="setCatFilter(\'' + escA(name) + '\')">' + escH(name) + '</button>';
+  });
+  pills.innerHTML = h;
+}
+function setCatFilter(cat) { activeCat = cat; renderPills(); renderSidebar(); }
+function applyFilters() { renderSidebar(); }
+
+/* ── CATEGORY MANAGER ── */
+function renderCatManager() {
+  var list = document.getElementById('cat-manage-list');
+  if (!customCategories.length) { list.innerHTML = '<div class="sidebar-empty" style="padding:10px 0">No custom categories yet. The 4 core ones are always present.</div>'; return; }
+  list.innerHTML = customCategories.map(function(c) {
+    var count = newsletters.filter(function(n){ return n.category === c.name; }).length;
+    return '<div class="cat-manage-item">' +
+      '<span class="cat-manage-name">' + escH(c.name) + '</span>' +
+      '<span class="cat-manage-count">' + count + ' issue' + (count === 1 ? '' : 's') + '</span>' +
+      '<div class="manage-item-actions">' +
+        '<button class="icon-btn danger" onclick="confirmDeleteCat(\'' + c.id + '\',\'' + escA(c.name) + '\')" title="Delete">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>' +
+        '</button></div></div>';
+  }).join('');
+}
+
+async function addCategory() {
+  var inp = document.getElementById('cat-new-input');
+  var name = inp.value.trim();
+  if (!name) return;
+  if (CORE_CATS.map(function(c){ return c.toLowerCase(); }).includes(name.toLowerCase())) {
+    showToast('That\'s a core category — already built in!', 'error'); return;
+  }
+  if (!_sb) {
+    customCategories.push({id: 'demo-' + Date.now(), name: name});
+    inp.value = ''; renderPills(); renderCatManager();
+    showToast('Added (demo)', 'success'); return;
+  }
+  try {
+    await sbInsert('categories', {name: name});
+    inp.value = ''; showToast('"' + name + '" added', 'success');
+    await loadCategories();
+  } catch(e) {
+    if (e.message && e.message.includes('duplicate')) showToast('Category already exists', 'error');
+    else showToast('Error: ' + e.message, 'error');
+  }
+}
+
+/* ── OPEN NEWSLETTER ── */
+function openNewsletter(id) {
+  activeId = id;
+  var n = newsletters.find(function(x){ return x.id === id; });
+  if (!n) return;
+  renderSidebar();
+  if (isAdmin) showReader();
+  document.getElementById('empty-state').style.display = 'none';
+  var v = document.getElementById('newsletter-view');
+  v.style.display = 'block';
+  v.innerHTML =
+    '<div class="nv-kicker" data-cat="' + escH(n.category||'') + '">' + escH(n.kicker || n.category || 'Issue') + '</div>' +
+    '<h1 class="nv-title">' + escH(n.title) + '</h1>' +
+    '<div class="nv-meta">' +
+      '<span class="nv-date">' + fmtDF(n.created_at) + '</span>' +
+      (n.author ? '<span class="nv-sep"></span><span class="nv-author">' + escH(n.author) + '</span>' : '') +
+      (n.category ? '<span class="nv-cat-badge" data-cat="' + escH(n.category) + '">' + escH(n.category) + '</span>' : '') +
+    '</div>' +
+    '<div class="nv-body">' + parseMarkdown(n.body || '') + '</div>' +
+    '<div class="reactions-panel" id="reactions-panel-' + id + '">' +
+      '<div class="reactions-label">Reactions</div>' +
+      '<div class="reactions-row" id="reactions-row-' + id + '">' +
+        buildReactionButtons(id) +
+      '</div>' +
+      '<div class="reactions-note">Your reaction is saved per session. Click again to remove it.</div>' +
+    '</div>';
+  document.getElementById('reader-view').scrollTop = 0;
+}
+
+/* ── REACTIONS UI ── */
+function buildReactionButtons(newsId) {
+  var nr = reactions[newsId] || {};
+  var mine = myReactions[newsId] || new Set();
+  return REACTIONS.map(function(rd) {
+    var count = nr[rd.emoji] || 0;
+    var reacted = mine.has(rd.emoji);
+    return '<button class="reaction-btn' + (reacted ? ' reacted' : '') + '" ' +
+      'id="rbtn-' + newsId + '-' + encodeEmoji(rd.emoji) + '" ' +
+      'onclick="toggleReaction(\'' + newsId + '\',\'' + escA(rd.emoji) + '\')" ' +
+      'title="' + rd.label + '">' +
+      '<span class="reaction-emoji">' + rd.emoji + '</span>' +
+      '<span class="reaction-count">' + (count || '') + '</span>' +
+      '</button>';
+  }).join('');
+}
+
+function refreshReactionsPanel(newsId) {
+  var row = document.getElementById('reactions-row-' + newsId);
+  if (!row) return;
+  row.innerHTML = buildReactionButtons(newsId);
+}
+
+function encodeEmoji(e) {
+  var out = '';
+  for (var i = 0; i < e.length; i++) out += e.charCodeAt(i).toString(16) + '_';
+  return out;
+}
+
+async function toggleReaction(newsId, emoji) {
+  if (!myReactions[newsId]) myReactions[newsId] = new Set();
+  var mine = myReactions[newsId];
+  var nr = reactions[newsId] || {};
+  if (!reactions[newsId]) reactions[newsId] = {};
+
+  var isRemoving = mine.has(emoji);
+
+  /* Optimistic update */
+  if (isRemoving) {
+    mine.delete(emoji);
+    reactions[newsId][emoji] = Math.max(0, (nr[emoji] || 1) - 1);
+  } else {
+    mine.add(emoji);
+    reactions[newsId][emoji] = (nr[emoji] || 0) + 1;
+  }
+  refreshReactionsPanel(newsId);
+  renderSidebar();
+
+  /* Animate the button */
+  var btnId = 'rbtn-' + newsId + '-' + encodeEmoji(emoji);
+  var btn = document.getElementById(btnId);
+  if (btn) { btn.classList.add('pop'); setTimeout(function(){ btn.classList.remove('pop'); }, 400); }
+
+  if (!_sb) return; // demo mode
+
+  try {
+    if (isRemoving) {
+      await sbDelete('reactions',
+        'newsletter_id=eq.' + encodeURIComponent(newsId) +
+        '&emoji=eq.' + encodeURIComponent(emoji) +
+        '&session_id=eq.' + encodeURIComponent(SESSION_ID));
+    } else {
+      await sbInsert('reactions', {newsletter_id: newsId, emoji: emoji, session_id: SESSION_ID});
+    }
+  } catch(e) {
+    /* Rollback on error */
+    if (isRemoving) {
+      mine.add(emoji);
+      reactions[newsId][emoji] = (reactions[newsId][emoji] || 0) + 1;
+    } else {
+      mine.delete(emoji);
+      reactions[newsId][emoji] = Math.max(0, (reactions[newsId][emoji] || 1) - 1);
+    }
+    refreshReactionsPanel(newsId);
+    showToast('Reaction failed', 'error');
+  }
+}
+
+/* ── ADMIN TOGGLE ── */
+function toggleAdmin() {
+  if (isAdmin) { showReader(); }
+  else { document.getElementById('login-overlay').style.display = 'flex'; setTimeout(function(){ document.getElementById('login-input').focus(); }, 80); }
+}
+function showReader() {
+  document.getElementById('reader-view').style.display = 'flex';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('admin-toggle-btn').textContent = isAdmin ? 'Access ↑' : 'Access';
+}
+function showAdminPanel() {
+  document.getElementById('reader-view').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'flex';
+  document.getElementById('admin-toggle-btn').textContent = '← Reader';
+}
+function logoutAdmin() {
+  isAdmin = false;
+  document.getElementById('admin-toggle-btn').textContent = 'Access';
+  showReader(); showToast('Logged out', '');
+}
+
+/* ── LOGIN ── */
+function submitAdminLogin() {
+  var val = document.getElementById('login-input').value.trim().toUpperCase();
+  var errEl = document.getElementById('login-error');
+  var inp = document.getElementById('login-input');
+  if (!currentCode) { errEl.textContent = 'Code not loaded yet. Try again.'; return; }
+  if (val === currentCode.toUpperCase()) {
+    isAdmin = true;
+    document.getElementById('login-overlay').style.display = 'none';
+    inp.value = ''; errEl.textContent = '';
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) document.getElementById('supabase-notice').style.display = 'block';
+    showAdminPanel(); showToast('Welcome back', 'success');
+  } else {
+    inp.classList.add('error');
+    errEl.textContent = 'Incorrect code. Codes rotate monthly.';
+    setTimeout(function(){ inp.classList.remove('error'); }, 400);
+  }
+}
+
+/* ── TABS ── */
+function switchTab(tab, btn) {
+  document.querySelectorAll('.admin-tab').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  ['compose','manage','categories','settings'].forEach(function(t){
+    document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'manage') renderManage();
+  if (tab === 'categories') renderCatManager();
+  if (tab === 'settings') populateSettingsCode();
+}
+
+function renderManage() {
+  var list = document.getElementById('manage-list');
+  if (!newsletters.length) { list.innerHTML = '<div class="sidebar-empty">No issues yet.</div>'; return; }
+  list.innerHTML = newsletters.map(function(n) {
+    var nr = reactions[n.id] || {};
+    var reactionSummary = REACTIONS.filter(function(rd){ return (nr[rd.emoji]||0)>0; })
+      .map(function(rd){ return rd.emoji + ' ' + nr[rd.emoji]; }).join('  ');
+    return '<div class="manage-item">' +
+      '<div class="manage-item-info">' +
+        '<div class="manage-item-title">' + escH(n.title) + '</div>' +
+        '<div class="manage-item-sub"><span>' + fmtD(n.created_at) + '</span>' +
+        (n.author ? '<span>· ' + escH(n.author) + '</span>' : '') +
+        (n.category ? '<span class="manage-cat-badge">' + escH(n.category) + '</span>' : '') +
+        '</div>' +
+        (reactionSummary ? '<div class="manage-reactions-summary">' + reactionSummary + '</div>' : '') +
+      '</div>' +
+      '<div class="manage-item-actions">' +
+        '<button class="icon-btn danger" onclick="confirmDeleteIssue(\'' + n.id + '\',\'' + escA(n.title) + '\')" title="Delete">' +
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>' +
+        '</button></div></div>';
+  }).join('');
+}
+
+/* ── PUBLISH ── */
+async function publishNewsletter() {
+  var title    = document.getElementById('f-title').value.trim();
+  var author   = document.getElementById('f-author').value.trim();
+  var category = document.getElementById('f-category').value;
+  var kicker   = document.getElementById('f-kicker').value.trim();
+  var body     = document.getElementById('f-body').value.trim();
+  if (!title) { showToast('Title is required', 'error'); return; }
+  var btn = document.getElementById('pub-btn'), st = document.getElementById('pub-status');
+  btn.disabled = true; st.textContent = 'Publishing…'; st.className = 'pub-status';
+  if (!_sb) {
+    newsletters.unshift({id:'demo-'+Date.now(), title, author, category, kicker, body, created_at: new Date().toISOString()});
+    renderSidebar(); clearCompose(); btn.disabled = false; st.textContent = '';
+    showToast('Published (demo mode)', 'success'); return;
+  }
+  try {
+    await sbInsert('newsletters', {title, author, category, kicker, body});
+    clearCompose(); st.textContent = '✓ Published'; st.className = 'pub-status success';
+    setTimeout(function(){ st.textContent = ''; }, 2500);
+    showToast('Issue published!', 'success');
+    await loadNewsletters();
+  } catch(e) {
+    st.textContent = '✗ ' + (e.message || 'Failed'); st.className = 'pub-status error';
+    showToast('Publish failed: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+function clearCompose() {
+  ['f-title','f-author','f-kicker','f-body'].forEach(function(id){ document.getElementById(id).value = ''; });
+  document.getElementById('f-category').value = '';
+}
+
+/* ── DELETE ── */
+function confirmDeleteIssue(id, title) {
+  pendingDeleteId = id; pendingDeleteType = 'issue';
+  document.getElementById('confirm-title').textContent = 'Delete issue?';
+  document.getElementById('confirm-sub').textContent = '"' + title + '" will be permanently deleted.';
+  document.getElementById('confirm-backdrop').classList.add('visible');
+  document.getElementById('confirm-ok').onclick = executeDelete;
+}
+function confirmDeleteCat(id, name) {
+  pendingDeleteId = id; pendingDeleteType = 'category';
+  document.getElementById('confirm-title').textContent = 'Delete category?';
+  document.getElementById('confirm-sub').textContent = '"' + name + '" will be removed. Existing issues keep their label but it won\'t appear as a filter.';
+  document.getElementById('confirm-backdrop').classList.add('visible');
+  document.getElementById('confirm-ok').onclick = executeDelete;
+}
+function closeConfirm() {
+  document.getElementById('confirm-backdrop').classList.remove('visible');
+  pendingDeleteId = null; pendingDeleteType = null;
+}
+async function executeDelete() {
+  var id = pendingDeleteId, type = pendingDeleteType;
+  closeConfirm();
+  if (!id) return;
+  if (!_sb || id.startsWith('demo-')) {
+    if (type === 'issue') {
+      newsletters = newsletters.filter(function(n){ return n.id !== id; });
+      if (activeId === id){ activeId = null; document.getElementById('newsletter-view').style.display = 'none'; document.getElementById('empty-state').style.display = 'flex'; }
+      renderSidebar();
+    } else {
+      customCategories = customCategories.filter(function(c){ return c.id !== id; });
+      renderPills(); renderCatManager();
+    }
+    showToast('Deleted (demo)', ''); return;
+  }
+  try {
+    var table = type === 'issue' ? 'newsletters' : 'categories';
+    await sbDelete(table, 'id=eq.' + encodeURIComponent(id));
+    if (type === 'issue' && activeId === id){ activeId = null; document.getElementById('newsletter-view').style.display = 'none'; document.getElementById('empty-state').style.display = 'flex'; }
+    showToast(type === 'issue' ? 'Issue deleted' : 'Category deleted', '');
+    if (type === 'issue') await loadNewsletters(); else await loadCategories();
+  } catch(e) { showToast('Delete failed: ' + e.message, 'error'); }
+}
+
+/* ── SETTINGS ── */
+function populateSettingsCode() {
+  var cv = document.getElementById('settings-code-val'), ex = document.getElementById('settings-code-expiry');
+  if (currentCode) {
+    cv.textContent = currentCode;
+    var now = new Date(), last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    var days = Math.round((last - now) / 86400000);
+    ex.textContent = last.toLocaleDateString('en-US', {month:'long',day:'numeric'}) + ' (' + days + 'd)';
+  } else { cv.textContent = 'Not loaded'; ex.textContent = '—'; }
+}
+function copyCurrentCode() {
+  if (!currentCode) return;
+  navigator.clipboard.writeText(currentCode).then(function(){ showToast('Code copied!', 'success'); }).catch(function(){ showToast(currentCode, ''); });
+}
+
+/* ── UTILS ── */
+function escH(s) { if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escA(s) { if(!s) return ''; return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+/* ── MARKDOWN PARSER ── */
+/*
+  Supported syntax:
+  # h1  ## h2  ### h3
+  **bold**   *italic*   ***bold+italic***
+  _underline_   -strikethrough-   !important!
+  ^UPPERCASE^   &lowercase&
+  `copiable text`
+  +bullet point  (line starting with +)
+  (text)[url]   hyperlink
+  > blockquote  (line starting with >)
+  ---           horizontal rule (line of only dashes/spaces, 3+)
+  Blank line = paragraph break
+*/
+function parseMarkdown(raw) {
+  if (!raw) return '';
+
+  /* Step 1: escape raw HTML so authors can't inject tags */
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* Step 2: apply inline spans — order matters (longest match first) */
+  function inlinePass(text) {
+    /* links: (text)[url] */
+    text = text.replace(/\(([^)]+)\)\[([^\]]+)\]/g, function(_, t, u) {
+      var safeUrl = u.replace(/javascript:/gi,'').replace(/"/g,'&quot;');
+      return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + esc(t) + '</a>';
+    });
+    /* copiable: `text` — use a placeholder so inner content isn't re-processed */
+    var copyParts = [];
+    text = text.replace(/`([^`]+)`/g, function(_, inner) {
+      var idx = copyParts.length;
+      copyParts.push(inner);
+      return '\x00COPY' + idx + '\x00';
+    });
+    /* bold+italic: ***text*** */
+    text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    /* bold: **text** */
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    /* italic: *text* */
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    /* underline: _text_ */
+    text = text.replace(/_([^_]+)_/g, '<u>$1</u>');
+    /* strikethrough: -text- (not at start of line — those are bullets handled at block level) */
+    text = text.replace(/(?<!^)-(.+?)-/gm, '<s>$1</s>');
+    /* important: !text! */
+    text = text.replace(/!([^!]+)!/g, '<span class="nv-important">$1</span>');
+    /* uppercase: ^text^ */
+    text = text.replace(/\^([^^]+)\^/g, '<span class="nv-upper">$1</span>');
+    /* lowercase: &text& */
+    text = text.replace(/&amp;([^&]+)&amp;/g, '<span class="nv-lower">$1</span>');
+    /* restore copy chips */
+    text = text.replace(/\x00COPY(\d+)\x00/g, function(_, idx) {
+      var inner = esc(copyParts[+idx]);
+      return '<span class="nv-copy" onclick="copyChip(this)" data-copy="' + inner + '">' + inner + '</span>';
+    });
+    return text;
+  }
+
+  var lines = raw.split('\n');
+  var output = '';
+  var inList = false;
+  var paraLines = [];
+
+  function flushPara() {
+    if (!paraLines.length) return;
+    var joined = paraLines.join(' ').trim();
+    paraLines = [];
+    if (!joined) return;
+    output += '<p>' + inlinePass(esc(joined)) + '</p>\n';
+  }
+  function flushList() {
+    if (!inList) return;
+    output += '</ul>\n';
+    inList = false;
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var trimmed = line.trim();
+
+    /* blank line → flush paragraph */
+    if (!trimmed) {
+      flushPara();
+      flushList();
+      continue;
+    }
+
+    /* headings */
+    var hm = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (hm) {
+      flushPara(); flushList();
+      var level = hm[1].length;
+      var tag = 'h' + level;
+      output += '<' + tag + '>' + inlinePass(esc(hm[2])) + '</' + tag + '>\n';
+      continue;
+    }
+
+    /* horizontal rule: line of 3+ dashes (optionally spaces) */
+    if (/^[-\s]{3,}$/.test(trimmed) && trimmed.replace(/\s/g,'').split('').every(function(c){ return c==='-'; })) {
+      flushPara(); flushList();
+      output += '<hr>\n';
+      continue;
+    }
+
+    /* blockquote: > text */
+    if (trimmed.startsWith('>')) {
+      flushPara(); flushList();
+      var qtext = trimmed.slice(1).trim();
+      output += '<blockquote>' + inlinePass(esc(qtext)) + '</blockquote>\n';
+      continue;
+    }
+
+    /* bullet: + text */
+    if (trimmed.startsWith('+')) {
+      flushPara();
+      if (!inList) { output += '<ul>\n'; inList = true; }
+      var litext = trimmed.slice(1).trim();
+      output += '<li>' + inlinePass(esc(litext)) + '</li>\n';
+      continue;
+    }
+
+    /* plain text → accumulate into paragraph */
+    flushList();
+    paraLines.push(trimmed);
+  }
+
+  /* flush any remaining content */
+  flushPara();
+  flushList();
+
+  return output;
+}
+
+/* copy chip click handler */
+function copyChip(el) {
+  var text = el.dataset.copy || el.textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    el.classList.add('copied');
+    setTimeout(function(){ el.classList.remove('copied'); }, 1800);
+  }).catch(function() { showToast(text, ''); });
+}
+window.copyChip = copyChip;
+
+/* legacy sanitize kept for any direct-HTML stored entries */
+function sanitize(html) {
+  var ok = /^(h[1-6]|p|blockquote|hr|strong|em|a|br|ul|ol|li|code|pre|u|s|span)$/i;
+  var d = document.createElement('div'); d.innerHTML = html;
+  (function clean(n){ Array.from(n.childNodes).forEach(function(c){
+    if(c.nodeType===1){
+      if(!ok.test(c.tagName)){ c.replaceWith(...c.childNodes); }
+      else {
+        Array.from(c.attributes).forEach(function(a){ if(!['href','target','rel','class','data-copy','onclick'].includes(a.name.toLowerCase())) c.removeAttribute(a.name); });
+        if(c.tagName==='A'){c.setAttribute('target','_blank');c.setAttribute('rel','noopener noreferrer');}
+        clean(c);
+      }
+    }
+  }); })(d);
+  return d.innerHTML;
+}
+function fmtD(iso) { if(!iso) return ''; return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtDF(iso) { if(!iso) return ''; return new Date(iso).toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
+function showToast(msg, type) {
+  var t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast ' + (type || '');
+  clearTimeout(toastTimer);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ t.classList.add('show'); }); });
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+/* ── EXPOSE ── */
+window.toggleAdmin          = toggleAdmin;
+window.submitAdminLogin     = submitAdminLogin;
+window.logoutAdmin          = logoutAdmin;
+window.switchTab            = switchTab;
+window.openNewsletter       = openNewsletter;
+window.applyFilters         = applyFilters;
+window.setCatFilter         = setCatFilter;
+window.publishNewsletter    = publishNewsletter;
+window.clearCompose         = clearCompose;
+window.confirmDeleteIssue   = confirmDeleteIssue;
+window.confirmDeleteCat     = confirmDeleteCat;
+window.closeConfirm         = closeConfirm;
+window.addCategory          = addCategory;
+window.copyCurrentCode      = copyCurrentCode;
+window.populateSettingsCode = populateSettingsCode;
+window.toggleReaction       = toggleReaction;
+
+/* ── BOOT ── */
+document.addEventListener('DOMContentLoaded', async function() {
+  var ok = await initSupabase();
+  if (ok) {
+    loadOrCreateCode();
+    loadNewsletters();
+    loadCategories();
+    loadReactions();
+  }
+  startAutoRefresh();
+
+  document.getElementById('login-input').addEventListener('input', function(e) {
+    var p = e.target.selectionStart; e.target.value = e.target.value.toUpperCase(); e.target.setSelectionRange(p,p);
+  });
+  document.getElementById('login-input').addEventListener('keydown', function(e) {
+    if(e.key==='Enter') submitAdminLogin();
+    if(e.key==='Escape') document.getElementById('login-overlay').style.display='none';
+  });
+  document.getElementById('login-overlay').addEventListener('mousedown', function(e) {
+    if(e.target===this) this.style.display='none';
+  });
+  document.getElementById('confirm-backdrop').addEventListener('mousedown', function(e) {
+    if(e.target===this) closeConfirm();
+  });
+  document.getElementById('cat-new-input').addEventListener('keydown', function(e) {
+    if(e.key==='Enter') addCategory();
+  });
+});
+</script>
+</body>
+</html>
