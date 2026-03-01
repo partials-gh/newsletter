@@ -327,6 +327,54 @@ textarea.field-input { resize: vertical; min-height: 300px; line-height: 1.8; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
 nav { animation: fadeUp 0.3s ease both; }
 .layout { animation: fadeUp 0.3s ease 0.05s both; }
+
+/* CONTEXT MENU */
+.ctx-menu {
+  position: fixed; z-index: 9000;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 9px; padding: 5px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  min-width: 160px; animation: ctxPop 0.15s cubic-bezier(0.2,0,0,1);
+  user-select: none;
+}
+@keyframes ctxPop { from{opacity:0;transform:scale(0.95) translateY(-4px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.ctx-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 12px; border-radius: 6px; font-size: 11px;
+  color: var(--text-muted); cursor: pointer; transition: all 0.1s;
+  font-family: var(--mono);
+}
+.ctx-item:hover { background: var(--surface2); color: var(--text); }
+.ctx-item.danger:hover { background: rgba(248,113,113,0.08); color: #f87171; }
+.ctx-item svg { flex-shrink: 0; }
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.ctx-label { padding: 5px 12px 3px; font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+
+/* EDIT MODAL */
+.edit-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  z-index: 700; display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+.edit-backdrop.visible { display: flex; }
+.edit-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px; width: 640px; max-width: 95vw;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  animation: popIn 0.2s cubic-bezier(0.2,0,0,1);
+}
+.edit-box::-webkit-scrollbar { width: 4px; }
+.edit-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.edit-title { font-family: var(--serif); font-size: 18px; font-weight: 200; margin-bottom: 20px; }
+
+/* ADMIN SESSION INDICATOR */
+.admin-badge {
+  font-size: 10px; color: var(--accent); background: var(--accent-dim);
+  border: 1px solid rgba(74,222,128,0.25); border-radius: 20px;
+  padding: 2px 9px; letter-spacing: 0.4px; display: none;
+}
+.admin-badge.visible { display: inline-block; }
 </style>
 </head>
 <body>
@@ -341,6 +389,7 @@ nav { animation: fadeUp 0.3s ease both; }
   <span class="nav-sub">The Feed</span>
   <div class="nav-right">
     <span class="status-countdown" id="refresh-countdown" title="Auto-refresh countdown"></span>
+    <span class="admin-badge" id="admin-badge">Admin</span>
     <button class="nav-btn" id="admin-toggle-btn" onclick="toggleAdmin()">Access</button>
   </div>
 </nav>
@@ -664,6 +713,51 @@ CREATE POLICY "Anon delete"   ON reactions FOR DELETE USING (true);</div>
   </div>
 </div>
 
+<!-- CONTEXT MENU -->
+<div class="ctx-menu" id="ctx-menu" style="display:none"></div>
+
+<!-- EDIT MODAL -->
+<div class="edit-backdrop" id="edit-backdrop">
+  <div class="edit-box">
+    <div class="edit-title">Edit Issue</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Title</label>
+        <input class="field-input" id="e-title" type="text">
+      </div>
+      <div class="field-group" style="flex:0;min-width:140px">
+        <label class="field-label">Author</label>
+        <input class="field-input" id="e-author" type="text">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group" style="flex:0;min-width:180px">
+        <label class="field-label">Category</label>
+        <select class="field-input" id="e-category">
+          <option value="">— No category —</option>
+          <option value="Bug Fix">Bug Fix</option>
+          <option value="Update">Update</option>
+          <option value="New Project">New Project</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Kicker</label>
+        <input class="field-input" id="e-kicker" type="text">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Body</label>
+      <textarea class="field-input" id="e-body" style="min-height:240px"></textarea>
+    </div>
+    <div class="publish-bar">
+      <button class="pub-btn primary" id="e-save-btn" onclick="saveEdit()">Save Changes</button>
+      <button class="pub-btn secondary" onclick="closeEdit()">Cancel</button>
+      <span class="pub-status" id="e-status"></span>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -686,18 +780,34 @@ var CORE_CATS = ['Bug Fix', 'Update', 'New Project', 'Other'];
 var _sb              = null;
 /* ── FALLBACK SECRET (obfuscated, always works even if Supabase is down) ── */
 var _f = [80,65,82,84].map(function(c){return String.fromCharCode(c);}).join('');
-var currentCode = _f; // starts as fallback, gets overwritten by Supabase code when loaded
+var currentCode = _f;
 var newsletters      = [];
 var customCategories = [];
-var reactions        = {};   // { newsletterId: { emoji: count } }
-var myReactions      = {};   // { newsletterId: Set<emoji> }
+var reactions        = {};
+var myReactions      = {};
 var activeId         = null;
+var editingId        = null;
 var activeCat        = 'all';
 var isAdmin          = false;
 var pendingDeleteId  = null;
 var pendingDeleteType = null;
 var toastTimer;
 var _rtChan          = null;
+
+/* ── CODE BLACKLIST — too simple/default, never accepted ── */
+var CODE_BLACKLIST = ['ABC123','000000','111111','AAAAAA','123456','ABCDEF','PASSWORD'];
+
+/* ── ADMIN SESSION — persists across page reloads ── */
+var ADMIN_SESSION_KEY = 'partials_admin_session';
+function saveAdminSession() {
+  try { localStorage.setItem(ADMIN_SESSION_KEY, '1'); } catch(e) {}
+}
+function clearAdminSession() {
+  try { localStorage.removeItem(ADMIN_SESSION_KEY); } catch(e) {}
+}
+function restoreAdminSession() {
+  try { return localStorage.getItem(ADMIN_SESSION_KEY) === '1'; } catch(e) { return false; }
+}
 
 /* ── SESSION ID (persists in localStorage for reaction identity) ── */
 var SESSION_ID = (function() {
@@ -809,30 +919,48 @@ async function loadOrCreateCode() {
   try {
     var rows = await sbSelectFresh('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
     if (rows && rows.length && rows[0].code) {
-      currentCode = rows[0].code;
+      var fetched = rows[0].code;
+      // Blacklisted? Auto-replace
+      if (CODE_BLACKLIST.includes(fetched.toUpperCase())) {
+        var clean = randCode6();
+        await sbUpsertCode(clean, mk);
+        currentCode = clean;
+      } else {
+        currentCode = fetched;
+      }
       populateSettingsCode();
       startCodeWatcher();
       return;
     }
-    // No code yet — create one via UPSERT
+    // No code yet — create one
     var code = randCode6();
-    var r = await fetch(SUPABASE_URL + '/rest/v1/access_codes', {
-      method: 'POST',
-      headers: Object.assign({}, sbHeaders(), { 'Prefer': 'resolution=merge-duplicates,return=representation' }),
-      body: JSON.stringify({ code: code, month_key: mk }),
-      cache: 'no-store'
-    });
-    if (r.ok) {
-      var ins = await r.json();
-      currentCode = (ins && ins[0] && ins[0].code) ? ins[0].code : code;
-    } else {
-      currentCode = code;
-    }
+    await sbUpsertCode(code, mk);
+    currentCode = code;
     populateSettingsCode();
   } catch(e) {
     console.warn('access_codes:', e.message);
   }
   startCodeWatcher();
+}
+
+async function sbUpsertCode(code, mk) {
+  // Try UPSERT (POST with merge-duplicates)
+  var r = await fetch(SUPABASE_URL + '/rest/v1/access_codes', {
+    method: 'POST',
+    headers: Object.assign({}, sbHeaders(), { 'Prefer': 'resolution=merge-duplicates,return=representation' }),
+    body: JSON.stringify({ code: code, month_key: mk }),
+    cache: 'no-store'
+  });
+  if (!r.ok) {
+    // Fallback: PATCH
+    var r2 = await fetch(sbUrl('access_codes', 'month_key=eq.' + encodeURIComponent(mk)), {
+      method: 'PATCH',
+      headers: sbHeaders(),
+      body: JSON.stringify({ code: code }),
+      cache: 'no-store'
+    });
+    if (!r2.ok) throw new Error('PATCH failed: HTTP ' + r2.status);
+  }
 }
 
 /* Poll every 5s — picks up codes changed by embed, pg_cron, or any other source */
@@ -946,7 +1074,9 @@ function renderSidebar() {
       if (upCount > 0)   reactionHtml += '<span class="reaction-preview-chip up">▲ ' + upCount + '</span>';
       if (downCount > 0) reactionHtml += '<span class="reaction-preview-chip down">▼ ' + downCount + '</span>';
     }
-    return '<div class="newsletter-item' + (n.id === activeId ? ' active' : '') + '" onclick="openNewsletter(\'' + n.id + '\')">' +
+    return '<div class="newsletter-item' + (n.id === activeId ? ' active' : '') + '" ' +
+      'onclick="openNewsletter(\'' + n.id + '\')" ' +
+      'oncontextmenu="showCtxMenu(event,\'' + n.id + '\')">' +
       '<div class="item-title">' + escH(n.title) + '</div>' +
       '<div class="item-meta"><span class="item-date">' + fmtD(n.created_at) + '</span>' +
       (n.category ? '<span class="item-cat" data-cat="' + escH(n.category) + '">' + escH(n.category) + '</span>' : '') +
@@ -1145,15 +1275,14 @@ async function toggleReaction(newsId, key) {
   }
 }
 
-/* ── ADMIN TOGGLE ── */
 function toggleAdmin() {
-  if (isAdmin) { showReader(); }
+  if (isAdmin) { showAdminPanel(); }
   else { document.getElementById('login-overlay').style.display = 'flex'; setTimeout(function(){ document.getElementById('login-input').focus(); }, 80); }
 }
 function showReader() {
   document.getElementById('reader-view').style.display = 'flex';
   document.getElementById('admin-panel').style.display = 'none';
-  document.getElementById('admin-toggle-btn').textContent = isAdmin ? 'Access ↑' : 'Access';
+  if (isAdmin) document.getElementById('admin-toggle-btn').textContent = 'Dashboard';
 }
 function showAdminPanel() {
   document.getElementById('reader-view').style.display = 'none';
@@ -1161,9 +1290,9 @@ function showAdminPanel() {
   document.getElementById('admin-toggle-btn').textContent = '← Reader';
 }
 function logoutAdmin() {
-  isAdmin = false;
-  document.getElementById('admin-toggle-btn').textContent = 'Access';
-  showReader(); showToast('Logged out', '');
+  setAdmin(false);
+  showReader();
+  showToast('Logged out', '');
 }
 
 /* ── LOGIN ── */
@@ -1172,20 +1301,34 @@ async function submitAdminLogin() {
   var errEl = document.getElementById('login-error');
   var inp = document.getElementById('login-input');
 
-  // Accept either the Supabase monthly code OR the hardcoded fallback
-  var valid = (currentCode && val === currentCode.toUpperCase()) ||
+  var valid = (currentCode && val === currentCode.toUpperCase() && !CODE_BLACKLIST.includes(val)) ||
               (val === _f.toUpperCase());
 
   if (valid) {
-    isAdmin = true;
+    setAdmin(true);
     document.getElementById('login-overlay').style.display = 'none';
     inp.value = ''; errEl.textContent = '';
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) document.getElementById('supabase-notice').style.display = 'block';
     showAdminPanel(); showToast('Welcome back', 'success');
   } else {
     inp.classList.add('error');
-    errEl.textContent = 'Incorrect code. Codes rotate monthly.';
+    errEl.textContent = CODE_BLACKLIST.includes(val)
+      ? 'That code is not valid. Please generate a new one.'
+      : 'Incorrect code. Codes rotate monthly.';
     setTimeout(function(){ inp.classList.remove('error'); }, 400);
+  }
+}
+
+function setAdmin(state) {
+  isAdmin = state;
+  if (state) {
+    saveAdminSession();
+    document.getElementById('admin-badge').classList.add('visible');
+    document.getElementById('admin-toggle-btn').textContent = 'Dashboard';
+  } else {
+    clearAdminSession();
+    document.getElementById('admin-badge').classList.remove('visible');
+    document.getElementById('admin-toggle-btn').textContent = 'Access';
   }
 }
 
@@ -1509,10 +1652,136 @@ window.copyCurrentCode      = copyCurrentCode;
 window.populateSettingsCode = populateSettingsCode;
 window.toggleReaction       = toggleReaction;
 
+/* ── CONTEXT MENU ── */
+var _ctxTarget = null;
+function showCtxMenu(e, newsId) {
+  e.preventDefault();
+  _ctxTarget = newsId;
+  var menu = document.getElementById('ctx-menu');
+  var n = newsletters.find(function(x){ return x.id === newsId; });
+  if (!n) return;
+
+  var adminItems = isAdmin
+    ? '<div class="ctx-sep"></div>' +
+      '<div class="ctx-label">Admin</div>' +
+      '<div class="ctx-item" onclick="ctxEdit(\'' + newsId + '\')">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+        'Edit issue' +
+      '</div>' +
+      '<div class="ctx-item danger" onclick="ctxDelete(\'' + newsId + '\',\'' + escA(n.title) + '\')">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>' +
+        'Delete issue' +
+      '</div>'
+    : '';
+
+  menu.innerHTML =
+    '<div class="ctx-label">' + escH(n.title).slice(0, 28) + (n.title.length > 28 ? '…' : '') + '</div>' +
+    '<div class="ctx-item" onclick="openNewsletter(\'' + newsId + '\'); closeCtx()">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+      'Open issue' +
+    '</div>' +
+    '<div class="ctx-item" onclick="copyIssueLink(\'' + newsId + '\')">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>' +
+      'Copy link' +
+    '</div>' +
+    adminItems;
+
+  // Position
+  menu.style.display = 'block';
+  var mw = menu.offsetWidth, mh = menu.offsetHeight;
+  var x = Math.min(e.clientX, window.innerWidth  - mw - 8);
+  var y = Math.min(e.clientY, window.innerHeight - mh - 8);
+  menu.style.left = x + 'px';
+  menu.style.top  = y + 'px';
+}
+
+function closeCtx() {
+  document.getElementById('ctx-menu').style.display = 'none';
+  _ctxTarget = null;
+}
+
+function ctxEdit(id) {
+  closeCtx();
+  openEditModal(id);
+}
+
+function ctxDelete(id, title) {
+  closeCtx();
+  confirmDeleteIssue(id, title);
+}
+
+function copyIssueLink(id) {
+  closeCtx();
+  var url = window.location.href.split('#')[0] + '#issue-' + id;
+  navigator.clipboard.writeText(url).then(function(){ showToast('Link copied', 'success'); }).catch(function(){ showToast('Could not copy', 'error'); });
+}
+
+/* ── EDIT MODAL ── */
+function openEditModal(id) {
+  var n = newsletters.find(function(x){ return x.id === id; });
+  if (!n) return;
+  editingId = id;
+  document.getElementById('e-title').value    = n.title    || '';
+  document.getElementById('e-author').value   = n.author   || '';
+  document.getElementById('e-category').value = n.category || '';
+  document.getElementById('e-kicker').value   = n.kicker   || '';
+  document.getElementById('e-body').value     = n.body     || '';
+  document.getElementById('e-status').textContent = '';
+  document.getElementById('edit-backdrop').classList.add('visible');
+}
+
+function closeEdit() {
+  document.getElementById('edit-backdrop').classList.remove('visible');
+  editingId = null;
+}
+
+async function saveEdit() {
+  if (!editingId) return;
+  var title    = document.getElementById('e-title').value.trim();
+  var author   = document.getElementById('e-author').value.trim();
+  var category = document.getElementById('e-category').value;
+  var kicker   = document.getElementById('e-kicker').value.trim();
+  var body     = document.getElementById('e-body').value.trim();
+  if (!title) { showToast('Title is required', 'error'); return; }
+
+  var btn = document.getElementById('e-save-btn');
+  var st  = document.getElementById('e-status');
+  btn.disabled = true; st.textContent = 'Saving…'; st.className = 'pub-status';
+
+  try {
+    var r = await fetch(sbUrl('newsletters', 'id=eq.' + encodeURIComponent(editingId)), {
+      method: 'PATCH',
+      headers: sbHeaders(),
+      body: JSON.stringify({ title: title, author: author, category: category, kicker: kicker, body: body })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // Update local cache
+    var idx = newsletters.findIndex(function(x){ return x.id === editingId; });
+    if (idx > -1) Object.assign(newsletters[idx], { title: title, author: author, category: category, kicker: kicker, body: body });
+    st.textContent = '✓ Saved'; st.className = 'pub-status success';
+    showToast('Issue updated', 'success');
+    renderSidebar();
+    if (activeId === editingId) openNewsletter(editingId);
+    setTimeout(function(){ closeEdit(); }, 800);
+  } catch(e) {
+    st.textContent = '✗ Failed'; st.className = 'pub-status error';
+    showToast('Save failed: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+}
+
+window.setAdmin            = setAdmin;
+window.ctxEdit             = ctxEdit;
+window.ctxDelete           = ctxDelete;
+window.copyIssueLink       = copyIssueLink;
+window.closeCtx            = closeCtx;
+window.openEditModal       = openEditModal;
+window.closeEdit           = closeEdit;
+window.saveEdit            = saveEdit;
+
 /* ── BOOT ── */
 document.addEventListener('DOMContentLoaded', async function() {
   var ok = await initSupabase();
-  // Always try to load code — fallback _f is already set so login never blocks
   loadOrCreateCode();
   if (ok) {
     loadNewsletters();
@@ -1521,16 +1790,34 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   startAutoRefresh();
 
-  // Instantly catch codes generated by the embed or other tabs on the same browser
+  // Restore admin session from previous visit
+  if (restoreAdminSession()) {
+    isAdmin = true;
+    document.getElementById('admin-badge').classList.add('visible');
+    document.getElementById('admin-toggle-btn').textContent = 'Dashboard';
+  }
+
+  // Instantly catch codes generated by embed or other tabs
   try {
     var _bc = new BroadcastChannel('partials_code');
     _bc.onmessage = function(e) {
-      if (e.data && e.data.code) {
-        currentCode = e.data.code;
-        populateSettingsCode();
-      }
+      if (e.data && e.data.code) { currentCode = e.data.code; populateSettingsCode(); }
     };
-  } catch(e) { /* polling catches it within 5s */ }
+  } catch(e) {}
+
+  // Global close: context menu
+  document.addEventListener('click',     function() { closeCtx(); });
+  document.addEventListener('keydown',   function(e) { if (e.key === 'Escape') { closeCtx(); closeEdit(); } });
+  document.addEventListener('contextmenu', function(e) {
+    // Only suppress default if we handled it on a newsletter item
+    var handled = e.target.closest('.newsletter-item');
+    if (!handled) closeCtx();
+  });
+
+  // Edit modal close on backdrop click
+  document.getElementById('edit-backdrop').addEventListener('mousedown', function(e) {
+    if (e.target === this) closeEdit();
+  });
 
   document.getElementById('login-input').addEventListener('input', function(e) {
     var p = e.target.selectionStart; e.target.value = e.target.value.toUpperCase(); e.target.setSelectionRange(p,p);
