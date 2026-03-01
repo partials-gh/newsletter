@@ -71,7 +71,9 @@ nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 48px; ba
 .item-cat[data-cat="Other"] { color: #fbbf24; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.2); }
 .newsletter-item.active .item-cat { color: var(--accent); background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.2); }
 .item-reactions-preview { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
-.reaction-preview-chip { font-size: 9px; color: var(--text-dim); display: flex; align-items: center; gap: 3px; }
+.reaction-preview-chip { font-size: 9px; color: var(--text-dim); display: flex; align-items: center; gap: 3px; font-family: var(--mono); }
+.reaction-preview-chip.up   { color: #4ade80; }
+.reaction-preview-chip.down { color: #f87171; }
 .sidebar-empty { padding: 20px 16px; text-align: center; color: var(--text-dim); font-size: 11px; line-height: 1.8; }
 .sidebar-footer { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
 .count-label { font-size: 10px; color: var(--text-dim); }
@@ -154,71 +156,51 @@ nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 48px; ba
   margin-top: 40px;
   padding-top: 28px;
   border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 .reactions-label {
   font-size: 10px;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  margin-bottom: 14px;
+  flex-shrink: 0;
 }
 .reactions-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 .reaction-btn {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
-  border-radius: 24px;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.2,0,0,1);
-  position: relative;
-  overflow: hidden;
-  user-select: none;
-}
-.reaction-btn:hover {
-  background: var(--surface2);
-  border-color: var(--border-strong);
-  color: var(--text);
-  transform: translateY(-1px);
-}
-.reaction-btn.reacted {
-  border-color: rgba(74,222,128,0.4);
-  background: var(--accent-dim);
-  color: var(--accent);
-}
-.reaction-btn.reacted:hover {
-  background: rgba(26,51,37,0.8);
-}
-.reaction-emoji { font-size: 16px; line-height: 1; }
-.reaction-count {
   font-size: 11px;
-  min-width: 12px;
-  text-align: left;
-  transition: transform 0.15s;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  letter-spacing: 0.3px;
 }
-.reaction-btn.pop .reaction-count { animation: countPop 0.3s cubic-bezier(0.2,0,0,1); }
-@keyframes countPop { 0%{transform:scale(1)} 40%{transform:scale(1.5)} 100%{transform:scale(1)} }
-.reaction-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(circle at center, rgba(74,222,128,0.15) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.reaction-btn.reacted::after { opacity: 1; }
-.reactions-note { font-size: 10px; color: var(--text-dim); margin-top: 12px; line-height: 1.7; }
+.reaction-btn:hover { background: var(--surface2); border-color: var(--border-strong); color: var(--text); }
+.reaction-btn.up:hover   { border-color: rgba(74,222,128,0.4); color: #4ade80; }
+.reaction-btn.down:hover { border-color: rgba(248,113,113,0.4); color: #f87171; }
+.reaction-btn.reacted.up   { background: var(--accent-dim); border-color: rgba(74,222,128,0.4); color: #4ade80; }
+.reaction-btn.reacted.down { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3); color: #f87171; }
+.reaction-icon { width: 14px; height: 14px; stroke: currentColor; fill: none; flex-shrink: 0; transition: transform 0.15s; }
+.reaction-btn:hover .reaction-icon { transform: translateY(-1px); }
+.reaction-btn.reacted.down .reaction-icon { transform: translateY(1px); }
+.reaction-count { font-size: 12px; min-width: 10px; }
+.reaction-btn.pop { animation: votePop 0.25s cubic-bezier(0.2,0,0,1); }
+@keyframes votePop { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+.reactions-note { font-size: 10px; color: var(--text-dim); margin-left: auto; }
 
 /* ADMIN */
 .admin-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
@@ -694,12 +676,8 @@ var SUPABASE_ANON_KEY = 'sb_publishable_sK0UtfGaunbqPBw_bmIb1w_9A5sGI4u';
 
 /* ── REACTION DEFINITIONS ── */
 var REACTIONS = [
-  { emoji: '👍', label: 'Like' },
-  { emoji: '❤️', label: 'Love' },
-  { emoji: '🔥', label: 'Fire' },
-  { emoji: '🎉', label: 'Hype' },
-  { emoji: '👀', label: 'Noted' },
-  { emoji: '😮', label: 'Wow' },
+  { key: 'up',   label: 'Helpful' },
+  { key: 'down', label: 'Not helpful' },
 ];
 
 /* ── CORE CATEGORIES (always present, hardcoded) ── */
@@ -781,6 +759,16 @@ async function sbSelect(table, params) {
   if (!r.ok) { var e = await r.json().catch(function(){ return {}; }); throw new Error(e.message || r.statusText); }
   return r.json();
 }
+// Cache-busting version — always gets fresh data from Supabase
+async function sbSelectFresh(table, params) {
+  var sep = params ? '&' : '';
+  var r = await fetch(sbUrl(table, params) + sep + 't=' + Date.now(), {
+    headers: sbHeaders(),
+    cache: 'no-store'
+  });
+  if (!r.ok) { var e = await r.json().catch(function(){ return {}; }); throw new Error(e.message || r.statusText); }
+  return r.json();
+}
 async function sbInsert(table, body) {
   var r = await fetch(sbUrl(table), {
     method: 'POST',
@@ -816,31 +804,38 @@ function randCode6() {
   return o;
 }
 async function loadOrCreateCode() {
-  if (!_sb) return; // fallback already set
+  if (!_sb) return;
   var mk = monthKey();
   try {
-    var rows = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
+    var rows = await sbSelectFresh('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
     if (rows && rows.length && rows[0].code) {
-      currentCode = rows[0].code; return;
+      currentCode = rows[0].code;
+      populateSettingsCode();
+      startCodeWatcher();
+      return;
     }
-    // No code for this month yet — create one
+    // No code yet — create one via UPSERT
     var code = randCode6();
-    try {
-      var ins = await sbInsert('access_codes', {code: code, month_key: mk});
+    var r = await fetch(SUPABASE_URL + '/rest/v1/access_codes', {
+      method: 'POST',
+      headers: Object.assign({}, sbHeaders(), { 'Prefer': 'resolution=merge-duplicates,return=representation' }),
+      body: JSON.stringify({ code: code, month_key: mk }),
+      cache: 'no-store'
+    });
+    if (r.ok) {
+      var ins = await r.json();
       currentCode = (ins && ins[0] && ins[0].code) ? ins[0].code : code;
-    } catch(e2) {
-      // Race condition — another client inserted first, fetch it
-      var rows2 = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
-      if (rows2 && rows2[0]) currentCode = rows2[0].code;
+    } else {
+      currentCode = code;
     }
+    populateSettingsCode();
   } catch(e) {
-    console.warn('access_codes fetch failed, using fallback:', e.message);
-    // currentCode stays as fallback — user can still log in
+    console.warn('access_codes:', e.message);
   }
   startCodeWatcher();
 }
 
-/* Poll every 10s — picks up codes generated externally (embed, pg_cron, etc.) instantly */
+/* Poll every 5s — picks up codes changed by embed, pg_cron, or any other source */
 var _codeWatchTimer = null;
 function startCodeWatcher() {
   if (_codeWatchTimer) return;
@@ -848,12 +843,12 @@ function startCodeWatcher() {
     if (!_sb) return;
     var mk = monthKey();
     try {
-      var rows = await sbSelect('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
-      if (rows && rows.length && rows[0].code && rows[0].code !== currentCode) {
-        currentCode = rows[0].code;
-        populateSettingsCode(); // refresh settings display if open
+      var rows = await sbSelectFresh('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
+      if (rows && rows.length && rows[0].code) {
+        currentCode = rows[0].code; // always apply, no skip
+        populateSettingsCode();
       }
-    } catch(e) { /* silent — keep watching */ }
+    } catch(e) { /* silent */ }
   }, 5000);
 }
 
@@ -943,12 +938,14 @@ function renderSidebar() {
   if (!items.length) { list.innerHTML = '<div class="sidebar-empty">' + (q || activeCat !== 'all' ? 'No results.' : 'No newsletters yet.') + '</div>'; return; }
   list.innerHTML = items.map(function(n) {
     var nr = reactions[n.id] || {};
+    var upCount   = nr['up']   || 0;
+    var downCount = nr['down'] || 0;
+    var hasReactions = upCount > 0 || downCount > 0;
     var reactionHtml = '';
-    var hasReactions = false;
-    REACTIONS.forEach(function(rd) {
-      var cnt = nr[rd.emoji] || 0;
-      if (cnt > 0) { hasReactions = true; reactionHtml += '<span class="reaction-preview-chip">' + rd.emoji + ' ' + cnt + '</span>'; }
-    });
+    if (hasReactions) {
+      if (upCount > 0)   reactionHtml += '<span class="reaction-preview-chip up">▲ ' + upCount + '</span>';
+      if (downCount > 0) reactionHtml += '<span class="reaction-preview-chip down">▼ ' + downCount + '</span>';
+    }
     return '<div class="newsletter-item' + (n.id === activeId ? ' active' : '') + '" onclick="openNewsletter(\'' + n.id + '\')">' +
       '<div class="item-title">' + escH(n.title) + '</div>' +
       '<div class="item-meta"><span class="item-date">' + fmtD(n.created_at) + '</span>' +
@@ -1030,30 +1027,43 @@ function openNewsletter(id) {
     '</div>' +
     '<div class="nv-body">' + parseMarkdown(n.body || '') + '</div>' +
     '<div class="reactions-panel" id="reactions-panel-' + id + '">' +
-      '<div class="reactions-label">Reactions</div>' +
+      '<div class="reactions-label">Was this helpful?</div>' +
       '<div class="reactions-row" id="reactions-row-' + id + '">' +
         buildReactionButtons(id) +
       '</div>' +
-      '<div class="reactions-note">Your reaction is saved per session. Click again to remove it.</div>' +
+      '<div class="reactions-note">Click again to remove</div>' +
     '</div>';
   document.getElementById('reader-view').scrollTop = 0;
 }
 
 /* ── REACTIONS UI ── */
+var THUMB_UP_SVG   = '<svg class="reaction-icon" viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+var THUMB_DOWN_SVG = '<svg class="reaction-icon" viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+
 function buildReactionButtons(newsId) {
-  var nr = reactions[newsId] || {};
+  var nr   = reactions[newsId]   || {};
   var mine = myReactions[newsId] || new Set();
-  return REACTIONS.map(function(rd) {
-    var count = nr[rd.emoji] || 0;
-    var reacted = mine.has(rd.emoji);
-    return '<button class="reaction-btn' + (reacted ? ' reacted' : '') + '" ' +
-      'id="rbtn-' + newsId + '-' + encodeEmoji(rd.emoji) + '" ' +
-      'onclick="toggleReaction(\'' + newsId + '\',\'' + escA(rd.emoji) + '\')" ' +
-      'title="' + rd.label + '">' +
-      '<span class="reaction-emoji">' + rd.emoji + '</span>' +
-      '<span class="reaction-count">' + (count || '') + '</span>' +
-      '</button>';
-  }).join('');
+
+  var upCount   = nr['up']   || 0;
+  var downCount = nr['down'] || 0;
+  var upReacted   = mine.has('up');
+  var downReacted = mine.has('down');
+
+  var upBtn = '<button class="reaction-btn up' + (upReacted ? ' reacted' : '') + '" ' +
+    'id="rbtn-' + newsId + '-up" ' +
+    'onclick="toggleReaction(\'' + newsId + '\',\'up\')">' +
+    THUMB_UP_SVG +
+    '<span class="reaction-count">' + upCount + '</span>' +
+    '</button>';
+
+  var downBtn = '<button class="reaction-btn down' + (downReacted ? ' reacted' : '') + '" ' +
+    'id="rbtn-' + newsId + '-down" ' +
+    'onclick="toggleReaction(\'' + newsId + '\',\'down\')">' +
+    THUMB_DOWN_SVG +
+    '<span class="reaction-count">' + downCount + '</span>' +
+    '</button>';
+
+  return upBtn + downBtn;
 }
 
 function refreshReactionsPanel(newsId) {
@@ -1062,58 +1072,76 @@ function refreshReactionsPanel(newsId) {
   row.innerHTML = buildReactionButtons(newsId);
 }
 
-function encodeEmoji(e) {
-  var out = '';
-  for (var i = 0; i < e.length; i++) out += e.charCodeAt(i).toString(16) + '_';
-  return out;
-}
-
-async function toggleReaction(newsId, emoji) {
+async function toggleReaction(newsId, key) {
   if (!myReactions[newsId]) myReactions[newsId] = new Set();
   var mine = myReactions[newsId];
-  var nr = reactions[newsId] || {};
+  var nr   = reactions[newsId] || {};
   if (!reactions[newsId]) reactions[newsId] = {};
 
-  var isRemoving = mine.has(emoji);
+  var isRemoving = mine.has(key);
 
   /* Optimistic update */
   if (isRemoving) {
-    mine.delete(emoji);
-    reactions[newsId][emoji] = Math.max(0, (nr[emoji] || 1) - 1);
+    mine.delete(key);
+    reactions[newsId][key] = Math.max(0, (nr[key] || 1) - 1);
   } else {
-    mine.add(emoji);
-    reactions[newsId][emoji] = (nr[emoji] || 0) + 1;
+    // Can only vote one way — remove opposite if present
+    var opposite = key === 'up' ? 'down' : 'up';
+    if (mine.has(opposite)) {
+      mine.delete(opposite);
+      reactions[newsId][opposite] = Math.max(0, (reactions[newsId][opposite] || 1) - 1);
+      if (_sb) {
+        sbDelete('reactions', 'newsletter_id=eq.' + encodeURIComponent(newsId) +
+          '&emoji=eq.' + encodeURIComponent(opposite) +
+          '&session_id=eq.' + encodeURIComponent(SESSION_ID)).catch(function(){});
+      }
+    }
+    mine.add(key);
+    reactions[newsId][key] = (reactions[newsId][key] || 0) + 1;
   }
+
   refreshReactionsPanel(newsId);
   renderSidebar();
 
-  /* Animate the button */
-  var btnId = 'rbtn-' + newsId + '-' + encodeEmoji(emoji);
-  var btn = document.getElementById(btnId);
-  if (btn) { btn.classList.add('pop'); setTimeout(function(){ btn.classList.remove('pop'); }, 400); }
+  /* Animate */
+  var btn = document.getElementById('rbtn-' + newsId + '-' + key);
+  if (btn) { btn.classList.add('pop'); setTimeout(function(){ btn.classList.remove('pop'); }, 300); }
 
-  if (!_sb) return; // demo mode
+  if (!_sb) return;
 
   try {
     if (isRemoving) {
       await sbDelete('reactions',
         'newsletter_id=eq.' + encodeURIComponent(newsId) +
-        '&emoji=eq.' + encodeURIComponent(emoji) +
+        '&emoji=eq.' + encodeURIComponent(key) +
         '&session_id=eq.' + encodeURIComponent(SESSION_ID));
     } else {
-      await sbInsert('reactions', {newsletter_id: newsId, emoji: emoji, session_id: SESSION_ID});
+      await sbInsert('reactions', { newsletter_id: newsId, emoji: key, session_id: SESSION_ID });
+    }
+    /* Re-fetch accurate counts from DB after write */
+    var rows = await sbSelectFresh('reactions',
+      'newsletter_id=eq.' + encodeURIComponent(newsId) + '&select=emoji,session_id');
+    if (rows) {
+      reactions[newsId] = {};
+      myReactions[newsId] = new Set();
+      rows.forEach(function(r) {
+        reactions[newsId][r.emoji] = (reactions[newsId][r.emoji] || 0) + 1;
+        if (r.session_id === SESSION_ID) myReactions[newsId].add(r.emoji);
+      });
+      refreshReactionsPanel(newsId);
+      renderSidebar();
     }
   } catch(e) {
     /* Rollback on error */
     if (isRemoving) {
-      mine.add(emoji);
-      reactions[newsId][emoji] = (reactions[newsId][emoji] || 0) + 1;
+      mine.add(key);
+      reactions[newsId][key] = (reactions[newsId][key] || 0) + 1;
     } else {
-      mine.delete(emoji);
-      reactions[newsId][emoji] = Math.max(0, (reactions[newsId][emoji] || 1) - 1);
+      mine.delete(key);
+      reactions[newsId][key] = Math.max(0, (reactions[newsId][key] || 1) - 1);
     }
     refreshReactionsPanel(newsId);
-    showToast('Reaction failed', 'error');
+    showToast('Could not save reaction', 'error');
   }
 }
 
@@ -1178,8 +1206,10 @@ function renderManage() {
   if (!newsletters.length) { list.innerHTML = '<div class="sidebar-empty">No issues yet.</div>'; return; }
   list.innerHTML = newsletters.map(function(n) {
     var nr = reactions[n.id] || {};
-    var reactionSummary = REACTIONS.filter(function(rd){ return (nr[rd.emoji]||0)>0; })
-      .map(function(rd){ return rd.emoji + ' ' + nr[rd.emoji]; }).join('  ');
+    var upCount = nr['up'] || 0;
+    var downCount = nr['down'] || 0;
+    var reactionSummary = (upCount > 0 || downCount > 0)
+      ? '▲ ' + upCount + '  ▼ ' + downCount : '';
     return '<div class="manage-item">' +
       '<div class="manage-item-info">' +
         '<div class="manage-item-title">' + escH(n.title) + '</div>' +
