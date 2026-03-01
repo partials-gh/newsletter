@@ -871,9 +871,8 @@ async function sbSelect(table, params) {
 }
 // Cache-busting version — always gets fresh data from Supabase
 async function sbSelectFresh(table, params) {
-  var sep = params ? '&' : '';
-  var r = await fetch(sbUrl(table, params) + sep + 't=' + Date.now(), {
-    headers: sbHeaders(),
+  var r = await fetch(sbUrl(table, params), {
+    headers: Object.assign({}, sbHeaders(), { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' }),
     cache: 'no-store'
   });
   if (!r.ok) { var e = await r.json().catch(function(){ return {}; }); throw new Error(e.message || r.statusText); }
@@ -1325,7 +1324,8 @@ async function submitAdminLogin() {
     var mk   = monthKey();
     var rows = await sbSelectFresh('access_codes', 'month_key=eq.' + encodeURIComponent(mk) + '&select=code&limit=1');
     var live = (rows && rows.length && rows[0].code) ? rows[0].code.toUpperCase() : null;
-    if (live) currentCode = rows[0].code; // keep in sync
+    console.log('[login] monthKey:', mk, '| entered:', val, '| live from DB:', live);
+    if (live) currentCode = rows[0].code;
     if (live && val === live && !CODE_BLACKLIST.includes(live)) {
       setAdmin(true);
       document.getElementById('login-overlay').style.display = 'none';
